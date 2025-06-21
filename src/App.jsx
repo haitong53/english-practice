@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 
 export default function App() {
   const [notes, setNotes] = useState([]);
-  const [newWord, setNewWord] = useState(""); // Từ tiếng Anh
-  const [newMeaning, setNewMeaning] = useState(""); // Nghĩa tiếng Việt
+  const [newWord, setNewWord] = useState("");
+  const [newMeaning, setNewMeaning] = useState("");
   const [currentTab, setCurrentTab] = useState("từ vựng");
   const [searchTerm, setSearchTerm] = useState("");
   const [types] = useState(["từ vựng", "ngữ pháp", "thành ngữ"]);
@@ -55,9 +55,9 @@ export default function App() {
 
   // Hàm highlight từ khóa
   const highlightKeyword = (text, keyword) => {
-    if (!keyword) return text; // Nếu không có từ khóa, trả về văn bản nguyên gốc
+    if (!keyword) return text;
 
-    const regex = new RegExp(`(${keyword})`, "gi"); // Tìm từ khóa không phân biệt chữ hoa/thường
+    const regex = new RegExp(`(${keyword})`, "gi");
     return text.split(regex).map((part, index) =>
       part ? (
         <span key={index}>{part}</span>
@@ -67,6 +67,81 @@ export default function App() {
         </mark>
       )
     );
+  };
+
+  // Hàm Export dữ liệu sang file .txt
+  const handleExportTXT = () => {
+    const content = notes
+      .map((note) => `${note.word} | ${note.meaning} | ${note.type}`)
+      .join("\n");
+
+    const blob = new Blob([content], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "english-notes.txt";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Hàm Export dữ liệu sang file .json
+  const handleExportJSON = () => {
+    const blob = new Blob([JSON.stringify(notes, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "english-notes.json";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Hàm Import từ file .txt hoặc .json
+  const handleImportFile = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+
+    if (file.type === "application/json" || file.name.endsWith(".json")) {
+      // Import từ file JSON
+      reader.onload = (event) => {
+        try {
+          const importedNotes = JSON.parse(event.target.result);
+          const mergedNotes = [...notes, ...importedNotes];
+          setNotes(mergedNotes);
+          saveNotesToLocalStorage(mergedNotes);
+          alert("Đã nhập dữ liệu từ file JSON thành công!");
+        } catch (error) {
+          alert("Lỗi: File JSON không hợp lệ.");
+        }
+      };
+      reader.readAsText(file);
+    } else if (file.type === "text/plain" || file.name.endsWith(".txt")) {
+      // Import từ file TXT (định dạng: từ | nghĩa | loại)
+      reader.onload = (event) => {
+        const lines = event.target.result.split("\n").filter(Boolean);
+        const importedNotes = lines.map((line) => {
+          const [word, meaning, type] = line.split("|").map((s) => s.trim());
+          return {
+            id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+            word: word || "",
+            meaning: meaning || "",
+            type: type || "từ vựng",
+            addedDate: new Date().toISOString(),
+          };
+        });
+
+        const mergedNotes = [...notes, ...importedNotes];
+        setNotes(mergedNotes);
+        saveNotesToLocalStorage(mergedNotes);
+        alert("Đã nhập dữ liệu từ file TXT thành công!");
+      };
+      reader.readAsText(file);
+    } else {
+      alert("Chỉ hỗ trợ file .txt hoặc .json");
+    }
   };
 
   return (
@@ -84,7 +159,9 @@ export default function App() {
               <button
                 onClick={() => setCurrentTab(type)}
                 className={`px-4 py-2 rounded-md ${
-                  currentTab === type ? "bg-indigo-600 text-white" : "bg-gray-200 hover:bg-gray-300"
+                  currentTab === type
+                    ? "bg-indigo-600 text-white"
+                    : "bg-gray-200 hover:bg-gray-300"
                 }`}
               >
                 {type.charAt(0).toUpperCase() + type.slice(1)}
@@ -132,15 +209,44 @@ export default function App() {
         </button>
       </div>
 
+      {/* Nút Import / Export */}
+      <div className="max-w-2xl mx-auto mb-6 flex gap-3 justify-between">
+        <label className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded cursor-pointer">
+          Import từ file
+          <input
+            type="file"
+            accept=".txt,.json"
+            className="hidden"
+            onChange={handleImportFile}
+          />
+        </label>
+
+        <div className="space-x-3">
+          <button
+            onClick={handleExportTXT}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
+          >
+            Export .txt
+          </button>
+          <button
+            onClick={handleExportJSON}
+            className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded"
+          >
+            Export .json
+          </button>
+        </div>
+      </div>
+
       {/* Danh sách ghi chú */}
       <main className="max-w-2xl mx-auto bg-white rounded-xl shadow-md overflow-hidden p-6">
         <ul className="space-y-3">
           {filteredNotes.length > 0 ? (
             filteredNotes.map((note) => (
-              <li key={note.id} className="flex justify-between items-center bg-gray-50 p-3 rounded-md">
-                <span>
-                  {highlightKeyword(`${note.word}: ${note.meaning}`, searchTerm)}
-                </span>
+              <li
+                key={note.id}
+                className="flex justify-between items-center bg-gray-50 p-3 rounded-md"
+              >
+                <span>{highlightKeyword(`${note.word}: ${note.meaning}`, searchTerm)}</span>
                 <button
                   onClick={() => handleDeleteNote(note.id)}
                   className="text-sm text-red-600 hover:underline"
@@ -150,9 +256,7 @@ export default function App() {
               </li>
             ))
           ) : (
-            <li className="text-gray-500 italic text-center py-4">
-              Không tìm thấy kết quả phù hợp.
-            </li>
+            <li className="text-gray-500 italic text-center py-4">Không có ghi chú nào.</li>
           )}
         </ul>
       </main>
