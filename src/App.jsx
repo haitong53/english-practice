@@ -4,7 +4,8 @@ export default function App() {
   const [notes, setNotes] = useState([]);
   const [newNote, setNewNote] = useState("");
   const [currentTab, setCurrentTab] = useState("từ vựng");
-  const [types, setTypes] = useState(["từ vựng", "ngữ pháp", "thành ngữ"]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [types] = useState(["từ vựng", "ngữ pháp", "thành ngữ"]);
 
   // Load notes từ localStorage khi mở app
   useEffect(() => {
@@ -37,6 +38,13 @@ export default function App() {
     saveNotesToLocalStorage(updatedNotes);
   };
 
+  // Lọc theo tab và từ khóa tìm kiếm
+  const filteredNotes = notes
+    .filter((note) => note.type === currentTab)
+    .filter((note) =>
+      note.content.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6 font-sans text-gray-800">
       <header className="text-center mb-8">
@@ -62,8 +70,19 @@ export default function App() {
         </ul>
       </nav>
 
+      {/* Ô tìm kiếm */}
+      <div className="max-w-2xl mx-auto mb-6">
+        <input
+          type="text"
+          placeholder="Tìm kiếm trong ghi chú..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
+        />
+      </div>
+
       {/* Form nhập ghi chú mới */}
-      <div className="mb-6">
+      <div className="max-w-2xl mx-auto mb-6">
         <textarea
           value={newNote}
           onChange={(e) => setNewNote(e.target.value)}
@@ -81,9 +100,8 @@ export default function App() {
       {/* Danh sách ghi chú */}
       <main className="max-w-2xl mx-auto bg-white rounded-xl shadow-md overflow-hidden p-6">
         <ul className="space-y-3">
-          {notes
-            .filter((note) => note.type === currentTab)
-            .map((note) => (
+          {filteredNotes.length > 0 ? (
+            filteredNotes.map((note) => (
               <li key={note.id} className="flex justify-between items-center bg-gray-50 p-3 rounded-md">
                 <span>{note.content}</span>
                 <button
@@ -93,5 +111,13 @@ export default function App() {
                   Xóa
                 </button>
               </li>
-            ))}
-          {notes.filter((note) => note.type === currentTab).
+            ))
+          ) : (
+            <li className="text-gray-500 italic text-center py-4">
+              Không tìm thấy kết quả phù hợp.
+            </li>
+          )}
+        </ul>
+      </main>
+
+      <footer className="text-center text-gray-50
