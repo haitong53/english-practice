@@ -46,6 +46,15 @@ export default function App() {
     saveNotesToLocalStorage(updatedNotes);
   };
 
+  // Hàm xóa tất cả ghi chú
+  const handleDeleteAllNotes = () => {
+    if (window.confirm("Bạn có chắc chắn muốn xóa tất cả ghi chú?")) {
+      setNotes([]);
+      saveNotesToLocalStorage([]);
+      alert("Đã xóa toàn bộ ghi chú!");
+    }
+  };
+
   // Lọc theo tab và từ khóa tìm kiếm
   const filteredNotes = notes
     .filter((note) => note.type === currentTab)
@@ -148,15 +157,6 @@ export default function App() {
     }
   };
 
-// Hàm xóa tất cả ghi chú
-const handleDeleteAllNotes = () => {
-  if (window.confirm("Bạn có chắc chắn muốn xóa tất cả ghi chú?")) {
-    setNotes([]);
-    saveNotesToLocalStorage([]);
-    alert("Đã xóa toàn bộ ghi chú!");
-  }
-};
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6 font-sans text-gray-800">
       <header className="text-center mb-8">
@@ -250,15 +250,15 @@ const handleDeleteAllNotes = () => {
         </div>
       </div>
 
-      {/* Nút xóa tất cả */}
-        <div className="max-w-2xl mx-auto mb-6 flex justify-end">
-          <button
-            onClick={handleDeleteAllNotes}
-            className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded transition"
-          >
-            🗑️ Xóa tất cả
-          </button>
-        </div>
+      {/* Nút Xóa tất cả */}
+      <div className="max-w-2xl mx-auto mb-6 flex justify-end">
+        <button
+          onClick={handleDeleteAllNotes}
+          className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded transition"
+        >
+          🗑️ Xóa tất cả
+        </button>
+      </div>
       
       {/* Danh sách ghi chú */}
       <main className="max-w-2xl mx-auto bg-white rounded-xl shadow-md overflow-hidden p-6">
