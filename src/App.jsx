@@ -120,4 +120,9 @@ export default function App() {
         </ul>
       </main>
 
-      <footer className="text-center text-gray-50
+      <footer className="text-center text-gray-500 text-sm mt-8">
+        &copy; 2025 Học tiếng Anh Tool. Built for self-learning.
+      </footer>
+    </div>
+  );
+}
