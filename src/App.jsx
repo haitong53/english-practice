@@ -53,6 +53,22 @@ export default function App() {
       `${note.word} ${note.meaning}`.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+  // Hàm highlight từ khóa
+  const highlightKeyword = (text, keyword) => {
+    if (!keyword) return text; // Nếu không có từ khóa, trả về văn bản nguyên gốc
+
+    const regex = new RegExp(`(${keyword})`, "gi"); // Tìm từ khóa không phân biệt chữ hoa/thường
+    return text.split(regex).map((part, index) =>
+      part ? (
+        <span key={index}>{part}</span>
+      ) : (
+        <mark key={index} className="bg-yellow-300">
+          {keyword}
+        </mark>
+      )
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6 font-sans text-gray-800">
       <header className="text-center mb-8">
@@ -122,7 +138,9 @@ export default function App() {
           {filteredNotes.length > 0 ? (
             filteredNotes.map((note) => (
               <li key={note.id} className="flex justify-between items-center bg-gray-50 p-3 rounded-md">
-                <span>{`${note.word}: ${note.meaning}`}</span>
+                <span>
+                  {highlightKeyword(`${note.word}: ${note.meaning}`, searchTerm)}
+                </span>
                 <button
                   onClick={() => handleDeleteNote(note.id)}
                   className="text-sm text-red-600 hover:underline"
