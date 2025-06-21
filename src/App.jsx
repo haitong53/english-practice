@@ -1,151 +1,116 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function App() {
-  const [level, setLevel] = useState(1);
-  const [score, setScore] = useState(0);
-  const [input, setInput] = useState("");
-  const [feedback, setFeedback] = useState("");
-  const [isCorrect, setIsCorrect] = useState(null);
-  const [streak, setStreak] = useState(0);
-  const [showAchievement, setShowAchievement] = useState(false);
-  const [showSample, setShowSample] = useState(false);
+  const [notes, setNotes] = useState([]);
+  const [newNote, setNewNote] = useState("");
+  const [editingIndex, setEditingIndex] = useState(null);
 
-  const exercises = [
-    {
-      vietnamese: "Tôi rất vui vì bạn đã đến.",
-      english: "I'm very happy that you came.",
-    },
-    {
-      vietnamese: "Dù trời mưa, chúng tôi vẫn đi dã ngoại.",
-      english: "Although it rained, we still went on a picnic.",
-    },
-    {
-      vietnamese: "Vì bận nên tôi không thể gọi cho bạn hôm nay.",
-      english: "Because I was busy, I couldn't call you today.",
-    },
-    {
-      vietnamese: "Mặc dù mệt, anh ấy vẫn tiếp tục làm việc.",
-      english: "Although he was tired, he continued working.",
-    },
-    {
-      vietnamese: "Nếu bạn cố gắng hơn, bạn sẽ thành công.",
-      english: "If you try harder, you will succeed.",
-    },
-  ];
+  // Load notes từ localStorage khi mở app
+  useEffect(() => {
+    const savedNotes = JSON.parse(localStorage.getItem("personalNotes")) || [];
+    setNotes(savedNotes);
+  }, []);
 
-  const currentExercise = exercises[level - 1];
-
-  const handleCheck = () => {
-    const answer = input.trim();
-    const correctAnswer = currentExercise.english;
-
-    if (answer.toLowerCase() === correctAnswer.toLowerCase()) {
-      setIsCorrect(true);
-      setFeedback("✅ Correct! Great job!");
-      setScore(score + 10);
-      setStreak(streak + 1);
-      if (streak % 3 === 2) {
-        setShowAchievement(true);
-        setTimeout(() => setShowAchievement(false), 3000);
-      }
-    } else {
-      setIsCorrect(false);
-      setFeedback(
-        `❌ Incorrect. Suggested correction: "${correctAnswer}"\n\nNote: Grammar check is simulated here. In a real app, this would use AI grammar checking like Grammarly or Google NLP.`
-      );
-      setStreak(0);
-    }
+  // Hàm lưu ghi chú vào localStorage
+  const saveNotesToLocalStorage = (updatedNotes) => {
+    localStorage.setItem("personalNotes", JSON.stringify(updatedNotes));
   };
 
-  const handleNext = () => {
-    if (level < exercises.length) {
-      setLevel(level + 1);
-      setInput("");
-      setFeedback("");
-      setIsCorrect(null);
-    } else {
-      alert("🎉 You've completed all levels!");
-    }
+  // Hàm thêm ghi chú mới
+  const handleAddNote = () => {
+    if (newNote.trim() === "") return;
+    const updatedNotes = [...notes, newNote];
+    setNotes(updatedNotes);
+    saveNotesToLocalStorage(updatedNotes);
+    setNewNote("");
+  };
+
+  // Hàm xóa ghi chú
+  const handleDeleteNote = (index) => {
+    const updatedNotes = notes.filter((_, i) => i !== index);
+    setNotes(updatedNotes);
+    saveNotesToLocalStorage(updatedNotes);
+  };
+
+  // Hàm chỉnh sửa ghi chú
+  const handleEditNote = (index) => {
+    setNewNote(notes[index]);
+    setEditingIndex(index);
+  };
+
+  // Hàm cập nhật ghi chú đã chỉnh sửa
+  const handleUpdateNote = () => {
+    if (newNote.trim() === "") return;
+    const updatedNotes = [...notes];
+    updatedNotes[editingIndex] = newNote;
+    setNotes(updatedNotes);
+    saveNotesToLocalStorage(updatedNotes);
+    setNewNote("");
+    setEditingIndex(null);
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6 font-sans text-gray-800">
-      {showAchievement && (
-        <div className="fixed top-4 right-4 bg-yellow-400 text-black px-6 py-3 rounded shadow-lg animate-bounce z-50">
-          🏆 Achievement Unlocked: 3 in a Row!
-        </div>
-      )}
-
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6 font-sans text-gray-800">
       <header className="text-center mb-8">
-        <h1 className="text-4xl font-bold text-indigo-700">English Practice</h1>
-        <p className="text-gray-600 mt-2">Practice translating Vietnamese to English and get instant feedback!</p>
-        <div className="mt-4 flex justify-center gap-4 text-sm">
-          <span>🎯 Level: {level}</span>
-          <span>🏆 Score: {score}</span>
-          <span>🔥 Streak: {streak}</span>
-        </div>
+        <h1 className="text-4xl font-bold text-indigo-700">Personal Notes</h1>
+        <p className="text-gray-600 mt-2">Write and save your personal notes locally.</p>
       </header>
 
-      <main className="max-w-2xl mx-auto bg-white rounded-xl shadow-md overflow-hidden">
-        <div className="p-6">
-          <h2 className="text-xl font-semibold text-gray-700 mb-4">
-            Translate this sentence to English:
-          </h2>
-          <p className="text-gray-800 text-lg italic mb-2">{currentExercise.vietnamese}</p>
-
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Type your translation here..."
-            className="w-full h-24 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
+      <main className="max-w-2xl mx-auto bg-white rounded-xl shadow-md overflow-hidden p-6">
+        <div className="flex gap-2 mb-6">
+          <input
+            type="text"
+            value={newNote}
+            onChange={(e) => setNewNote(e.target.value)}
+            placeholder="Type your note here..."
+            className="flex-1 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
           />
-
-          <div className="mt-4 flex justify-between items-center">
+          {editingIndex !== null ? (
             <button
-              onClick={() => setShowSample(!showSample)}
-              className="text-sm text-indigo-600 hover:underline"
+              onClick={handleUpdateNote}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition"
             >
-              {showSample ? "Hide sample" : "Show sample"}
+              Update
             </button>
-
-            <div className="flex gap-3">
-              <button
-                onClick={handleCheck}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded transition"
-              >
-                Check
-              </button>
-              {isCorrect !== null && (
-                <button
-                  onClick={handleNext}
-                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded transition"
-                >
-                  Next
-                </button>
-              )}
-            </div>
-          </div>
-
-          {showSample && (
-            <div className="mt-4 p-3 bg-blue-50 text-blue-700 rounded text-sm">
-              <strong>Sample translation:</strong> "{currentExercise.english}"
-            </div>
-          )}
-
-          {feedback && (
-            <div
-              className={`mt-4 p-3 rounded text-sm ${
-                isCorrect ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-              }`}
+          ) : (
+            <button
+              onClick={handleAddNote}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded transition"
             >
-              {feedback}
-            </div>
+              Add
+            </button>
           )}
         </div>
+
+        <ul className="space-y-3">
+          {notes.length === 0 ? (
+            <li className="text-gray-500 italic text-center py-4">No notes yet. Start adding some!</li>
+          ) : (
+            notes.map((note, index) => (
+              <li key={index} className="flex justify-between items-center bg-gray-50 p-3 rounded-md">
+                <span>{note}</span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleEditNote(index)}
+                    className="text-sm text-blue-600 hover:underline"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDeleteNote(index)}
+                    className="text-sm text-red-600 hover:underline"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </li>
+            ))
+          )}
+        </ul>
       </main>
 
       <footer className="text-center text-gray-500 text-sm mt-8">
-        &copy; 2025 English Practice Tool. Built for self-learning.
+        &copy; 2025 Personal Notes Tool. Built for self-use.
       </footer>
     </div>
   );
