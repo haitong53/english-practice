@@ -250,10 +250,7 @@ const handleDeleteAllNotes = () => {
         </div>
       </div>
 
-      {/* Danh sách ghi chú */}
-      <main className="max-w-2xl mx-auto bg-white rounded-xl shadow-md overflow-hidden p-6">
-        
-        {/* Nút xóa tất cả */}
+      {/* Nút xóa tất cả */}
         <div className="max-w-2xl mx-auto mb-6 flex justify-end">
           <button
             onClick={handleDeleteAllNotes}
@@ -262,7 +259,9 @@ const handleDeleteAllNotes = () => {
             🗑️ Xóa tất cả
           </button>
         </div>
-        
+      
+      {/* Danh sách ghi chú */}
+      <main className="max-w-2xl mx-auto bg-white rounded-xl shadow-md overflow-hidden p-6">
         <ul className="space-y-3">
           {filteredNotes.length > 0 ? (
             filteredNotes.map((note) => (
