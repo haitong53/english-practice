@@ -39,14 +39,14 @@ export default function App() {
     setNewMeaning("");
   };
 
-  // Hàm xóa ghi chú
+  // Hàm xóa một note
   const handleDeleteNote = (id) => {
     const updatedNotes = notes.filter((note) => note.id !== id);
     setNotes(updatedNotes);
     saveNotesToLocalStorage(updatedNotes);
   };
 
-  // Hàm xóa tất cả ghi chú
+  // Hàm xóa tất cả note
   const handleDeleteAllNotes = () => {
     if (window.confirm("Bạn có chắc chắn muốn xóa tất cả ghi chú?")) {
       setNotes([]);
@@ -78,7 +78,7 @@ export default function App() {
     );
   };
 
-  // Hàm Export dữ liệu sang file .txt
+  // Hàm Export sang TXT
   const handleExportTXT = () => {
     const content = notes
       .map((note) => `${note.word} | ${note.meaning} | ${note.type}`)
@@ -93,7 +93,7 @@ export default function App() {
     URL.revokeObjectURL(url);
   };
 
-  // Hàm Export dữ liệu sang file .json
+  // Hàm Export sang JSON
   const handleExportJSON = () => {
     const blob = new Blob([JSON.stringify(notes, null, 2)], {
       type: "application/json",
@@ -106,50 +106,49 @@ export default function App() {
     URL.revokeObjectURL(url);
   };
 
-  // Hàm Import từ file .txt hoặc .json
+  // Hàm Import file TXT hoặc JSON
   const handleImportFile = (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
+    const file = e.target.files[0];
+    if (!file) return;
 
-  const reader = new FileReader();
+    const reader = new FileReader();
 
-  reader.onload = (event) => {
-    const content = event.target.result;
-    const lines = content.split("\n").filter(Boolean); // Loại bỏ dòng trống
+    if (file.type === "application/json" || file.name.endsWith(".json")) {
+      reader.onload = (event) => {
+        try {
+          const importedNotes = JSON.parse(event.target.result);
+          const mergedNotes = [...notes, ...importedNotes];
+          setNotes(mergedNotes);
+          saveNotesToLocalStorage(mergedNotes);
+          alert("Đã nhập dữ liệu từ file JSON thành công!");
+        } catch (error) {
+          alert("Lỗi: File JSON không hợp lệ.");
+        }
+      };
+      reader.readAsText(file);
+    } else if (file.type === "text/plain" || file.name.endsWith(".txt")) {
+      reader.onload = (event) => {
+        const lines = event.target.result.split("\n").filter(Boolean);
+        const importedNotes = [];
 
-    const importedNotes = [];
-
-    lines.forEach((line) => {
-      line = line.trim();
-      if (line.includes("=")) {
-        // Trường hợp định dạng "từ = nghĩa"
-        const [word, meaning] = line.split("=");
-        importedNotes.push({
-          id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-          word: word.trim(),
-          meaning: meaning.trim(),
-          type: currentTab, // Lấy tab hiện tại làm loại note
-          addedDate: new Date().toISOString(),
+        lines.forEach((line) => {
+          line = line.trim();
+          if (line.includes("=")) {
+            const [word, meaning] = line.split("=");
+            importedNotes.push({
+              id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+              word: word.trim(),
+              meaning: meaning.trim(),
+              type: currentTab,
+              addedDate: new Date().toISOString(),
+            });
+          }
         });
-      } else {
-        // Trường hợp chỉ có từ hoặc dòng không hợp lệ → bỏ qua
-        console.warn("Dòng không hợp lệ:", line);
-      }
-    });
-
-    const mergedNotes = [...notes, ...importedNotes];
-    setNotes(mergedNotes);
-    saveNotesToLocalStorage(mergedNotes);
-    alert(`Đã nhập ${importedNotes.length} từ thành công!`);
-  };
-
-  reader.readAsText(file);
-};
 
         const mergedNotes = [...notes, ...importedNotes];
         setNotes(mergedNotes);
         saveNotesToLocalStorage(mergedNotes);
-        alert("Đã nhập dữ liệu từ file TXT thành công!");
+        alert(`Đã nhập ${importedNotes.length} từ thành công!`);
       };
       reader.readAsText(file);
     } else {
@@ -222,7 +221,7 @@ export default function App() {
         </button>
       </div>
 
-      {/* Nút Import / Export */}
+      {/* Nút Import/Export */}
       <div className="max-w-2xl mx-auto mb-6 flex gap-3 justify-between">
         <label className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded cursor-pointer">
           Import từ file
@@ -259,7 +258,7 @@ export default function App() {
           🗑️ Xóa tất cả
         </button>
       </div>
-      
+
       {/* Danh sách ghi chú */}
       <main className="max-w-2xl mx-auto bg-white rounded-xl shadow-md overflow-hidden p-6">
         <ul className="space-y-3">
@@ -279,7 +278,9 @@ export default function App() {
               </li>
             ))
           ) : (
-            <li className="text-gray-500 italic text-center py-4">Không có ghi chú nào.</li>
+            <li className="text-gray-500 italic text-center py-4">
+              Không có ghi chú nào.
+            </li>
           )}
         </ul>
       </main>
