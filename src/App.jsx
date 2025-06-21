@@ -99,39 +99,43 @@ export default function App() {
 
   // Hàm Import từ file .txt hoặc .json
   const handleImportFile = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+  const file = e.target.files[0];
+  if (!file) return;
 
-    const reader = new FileReader();
+  const reader = new FileReader();
 
-    if (file.type === "application/json" || file.name.endsWith(".json")) {
-      // Import từ file JSON
-      reader.onload = (event) => {
-        try {
-          const importedNotes = JSON.parse(event.target.result);
-          const mergedNotes = [...notes, ...importedNotes];
-          setNotes(mergedNotes);
-          saveNotesToLocalStorage(mergedNotes);
-          alert("Đã nhập dữ liệu từ file JSON thành công!");
-        } catch (error) {
-          alert("Lỗi: File JSON không hợp lệ.");
-        }
-      };
-      reader.readAsText(file);
-    } else if (file.type === "text/plain" || file.name.endsWith(".txt")) {
-      // Import từ file TXT (định dạng: từ | nghĩa | loại)
-      reader.onload = (event) => {
-        const lines = event.target.result.split("\n").filter(Boolean);
-        const importedNotes = lines.map((line) => {
-          const [word, meaning, type] = line.split("|").map((s) => s.trim());
-          return {
-            id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-            word: word || "",
-            meaning: meaning || "",
-            type: type || "từ vựng",
-            addedDate: new Date().toISOString(),
-          };
+  reader.onload = (event) => {
+    const content = event.target.result;
+    const lines = content.split("\n").filter(Boolean); // Loại bỏ dòng trống
+
+    const importedNotes = [];
+
+    lines.forEach((line) => {
+      line = line.trim();
+      if (line.includes("=")) {
+        // Trường hợp định dạng "từ = nghĩa"
+        const [word, meaning] = line.split("=");
+        importedNotes.push({
+          id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+          word: word.trim(),
+          meaning: meaning.trim(),
+          type: currentTab, // Lấy tab hiện tại làm loại note
+          addedDate: new Date().toISOString(),
         });
+      } else {
+        // Trường hợp chỉ có từ hoặc dòng không hợp lệ → bỏ qua
+        console.warn("Dòng không hợp lệ:", line);
+      }
+    });
+
+    const mergedNotes = [...notes, ...importedNotes];
+    setNotes(mergedNotes);
+    saveNotesToLocalStorage(mergedNotes);
+    alert(`Đã nhập ${importedNotes.length} từ thành công!`);
+  };
+
+  reader.readAsText(file);
+};
 
         const mergedNotes = [...notes, ...importedNotes];
         setNotes(mergedNotes);
