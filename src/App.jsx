@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 
 export default function App() {
   const [notes, setNotes] = useState([]);
-  const [newNote, setNewNote] = useState("");
+  const [newWord, setNewWord] = useState(""); // Từ tiếng Anh
+  const [newMeaning, setNewMeaning] = useState(""); // Nghĩa tiếng Việt
   const [currentTab, setCurrentTab] = useState("từ vựng");
   const [searchTerm, setSearchTerm] = useState("");
   const [types] = useState(["từ vựng", "ngữ pháp", "thành ngữ"]);
@@ -20,15 +21,22 @@ export default function App() {
 
   // Hàm thêm ghi chú mới
   const handleAddNote = () => {
-    if (newNote.trim() === "") return;
+    if (!newWord.trim() || !newMeaning.trim()) return;
     const newId = Date.now().toString();
     const updatedNotes = [
       ...notes,
-      { id: newId, type: currentTab, content: newNote, addedDate: new Date().toISOString() },
+      {
+        id: newId,
+        type: currentTab,
+        word: newWord,
+        meaning: newMeaning,
+        addedDate: new Date().toISOString(),
+      },
     ];
     setNotes(updatedNotes);
     saveNotesToLocalStorage(updatedNotes);
-    setNewNote("");
+    setNewWord("");
+    setNewMeaning("");
   };
 
   // Hàm xóa ghi chú
@@ -42,7 +50,7 @@ export default function App() {
   const filteredNotes = notes
     .filter((note) => note.type === currentTab)
     .filter((note) =>
-      note.content.toLowerCase().includes(searchTerm.toLowerCase())
+      `${note.word} ${note.meaning}`.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
   return (
@@ -83,15 +91,26 @@ export default function App() {
 
       {/* Form nhập ghi chú mới */}
       <div className="max-w-2xl mx-auto mb-6">
-        <textarea
-          value={newNote}
-          onChange={(e) => setNewNote(e.target.value)}
-          placeholder="Nhập nội dung..."
-          className="w-full h-24 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
-        />
+        <div className="mb-2">
+          <input
+            type="text"
+            placeholder="Nhập từ tiếng Anh..."
+            value={newWord}
+            onChange={(e) => setNewWord(e.target.value)}
+            className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          />
+        </div>
+        <div className="mb-4">
+          <textarea
+            placeholder="Nhập nghĩa tiếng Việt..."
+            value={newMeaning}
+            onChange={(e) => setNewMeaning(e.target.value)}
+            className="w-full h-24 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          />
+        </div>
         <button
           onClick={handleAddNote}
-          className="mt-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded transition"
+          className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded transition"
         >
           Lưu
         </button>
@@ -103,7 +122,7 @@ export default function App() {
           {filteredNotes.length > 0 ? (
             filteredNotes.map((note) => (
               <li key={note.id} className="flex justify-between items-center bg-gray-50 p-3 rounded-md">
-                <span>{note.content}</span>
+                <span>{`${note.word}: ${note.meaning}`}</span>
                 <button
                   onClick={() => handleDeleteNote(note.id)}
                   className="text-sm text-red-600 hover:underline"
