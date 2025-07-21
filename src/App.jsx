@@ -61,6 +61,34 @@ export default function App() {
     }
   };
 
+  // Hàm export file TXT
+  const handleExportTXT = () => {
+    const content = notes
+      .map((note) => `${note.word} | ${note.meaning} | ${note.type}`)
+      .join("\n");
+
+    const blob = new Blob([content], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "english-notes.txt";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Hàm export file JSON
+  const handleExportJSON = () => {
+    const blob = new Blob([JSON.stringify(notes, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "english-notes.json";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   // State và các biến
   const [notes, setNotes] = useState([]);
   const [newWord, setNewWord] = useState("");
