@@ -55,6 +55,16 @@ export default function App() {
     }
   };
 
+  // Hàm loại bỏ dấu tiếng Việt
+  const removeVietnameseTones = (str) => {
+    if (!str) return "";
+    return str
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/đ/g, "d")
+      .replace(/Đ/g, "D");
+  };
+
   // Lọc theo tab và từ khóa tìm kiếm (không dấu)
   const filteredNotes = notes
     .filter((note) => note.type === currentTab)
@@ -65,112 +75,27 @@ export default function App() {
       return normalizedNote.includes(keyword);
     });
 
-  // Hàm loại bỏ dấu tiếng Việt trong khung tìm kiếm
-  const removeVietnameseTones = (str) => {
-    if (!str) return "";
-    return str
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/đ/g, "d")
-      .replace(/Đ/g, "D");
-  };
-
   // Hàm highlight từ khóa
   const highlightKeyword = (text, keyword) => {
     if (!keyword) return text;
-  
-    const normalizedText = removeVietnameseTones(text).toLowerCase();
+
     const normalizedKeyword = removeVietnameseTones(keyword).toLowerCase();
-  
-    const regex = new RegExp(`(${keyword})`, "gi");
-    const normalizedRegex = new RegExp(`(${normalizedKeyword})`, "gi");
-  
-    const parts = text.split(regex).map((part, index) => {
-      if (normalizedRegex.test(part.toLowerCase())) {
-        return <mark key={index} className="bg-yellow-300">{part}</mark>;
+    const normalizedText = removeVietnameseTones(text).toLowerCase();
+    const originalText = text;
+
+    const regex = new RegExp(`(${normalizedKeyword})`, "gi");
+    const parts = originalText.split(regex);
+
+    return parts.map((part, index) => {
+      if (removeVietnameseTones(part).toLowerCase().includes(normalizedKeyword)) {
+        return (
+          <mark key={index} className="bg-yellow-300">
+            {part}
+          </mark>
+        );
       }
       return part;
     });
-  
-    return parts;
-  };
-
-  // Hàm Export sang TXT
-  const handleExportTXT = () => {
-    const content = notes
-      .map((note) => `${note.word} | ${note.meaning} | ${note.type}`)
-      .join("\n");
-
-    const blob = new Blob([content], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "english-notes.txt";
-    link.click();
-    URL.revokeObjectURL(url);
-  };
-
-  // Hàm Export sang JSON
-  const handleExportJSON = () => {
-    const blob = new Blob([JSON.stringify(notes, null, 2)], {
-      type: "application/json",
-    });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "english-notes.json";
-    link.click();
-    URL.revokeObjectURL(url);
-  };
-
-  // Hàm Import file TXT hoặc JSON
-  const handleImportFile = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-
-    if (file.type === "application/json" || file.name.endsWith(".json")) {
-      reader.onload = (event) => {
-        try {
-          const importedNotes = JSON.parse(event.target.result);
-          const mergedNotes = [...notes, ...importedNotes];
-          setNotes(mergedNotes);
-          saveNotesToLocalStorage(mergedNotes);
-          alert("Đã nhập dữ liệu từ file JSON thành công!");
-        } catch (error) {
-          alert("Lỗi: File JSON không hợp lệ.");
-        }
-      };
-      reader.readAsText(file);
-    } else if (file.type === "text/plain" || file.name.endsWith(".txt")) {
-      reader.onload = (event) => {
-        const lines = event.target.result.split("\n").filter(Boolean);
-        const importedNotes = [];
-
-        lines.forEach((line) => {
-          line = line.trim();
-          if (line.includes("=")) {
-            const [word, meaning] = line.split("=");
-            importedNotes.push({
-              id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-              word: word.trim(),
-              meaning: meaning.trim(),
-              type: currentTab,
-              addedDate: new Date().toISOString(),
-            });
-          }
-        });
-
-        const mergedNotes = [...notes, ...importedNotes];
-        setNotes(mergedNotes);
-        saveNotesToLocalStorage(mergedNotes);
-        alert(`Đã nhập ${importedNotes.length} từ thành công!`);
-      };
-      reader.readAsText(file);
-    } else {
-      alert("Chỉ hỗ trợ file .txt hoặc .json");
-    }
   };
 
   return (
