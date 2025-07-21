@@ -55,27 +55,44 @@ export default function App() {
     }
   };
 
-  // Lọc theo tab và từ khóa tìm kiếm
+  // Lọc theo tab và từ khóa tìm kiếm (không dấu)
   const filteredNotes = notes
     .filter((note) => note.type === currentTab)
-    .filter((note) =>
-      `${note.word} ${note.meaning}`.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    .filter((note) => {
+      const noteContent = `${note.word} ${note.meaning}`.toLowerCase();
+      const keyword = removeVietnameseTones(searchTerm).toLowerCase();
+      const normalizedNote = removeVietnameseTones(noteContent).toLowerCase();
+      return normalizedNote.includes(keyword);
+    });
+
+  // Hàm loại bỏ dấu tiếng Việt trong khung tìm kiếm
+  const removeVietnameseTones = (str) => {
+    if (!str) return "";
+    return str
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/đ/g, "d")
+      .replace(/Đ/g, "D");
+  };
 
   // Hàm highlight từ khóa
   const highlightKeyword = (text, keyword) => {
     if (!keyword) return text;
-
+  
+    const normalizedText = removeVietnameseTones(text).toLowerCase();
+    const normalizedKeyword = removeVietnameseTones(keyword).toLowerCase();
+  
     const regex = new RegExp(`(${keyword})`, "gi");
-    return text.split(regex).map((part, index) =>
-      part ? (
-        <span key={index}>{part}</span>
-      ) : (
-        <mark key={index} className="bg-yellow-300">
-          {keyword}
-        </mark>
-      )
-    );
+    const normalizedRegex = new RegExp(`(${normalizedKeyword})`, "gi");
+  
+    const parts = text.split(regex).map((part, index) => {
+      if (normalizedRegex.test(part.toLowerCase())) {
+        return <mark key={index} className="bg-yellow-300">{part}</mark>;
+      }
+      return part;
+    });
+  
+    return parts;
   };
 
   // Hàm Export sang TXT
