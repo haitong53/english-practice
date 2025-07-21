@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 
+console.log("App component đã chạy");
+
   // Hàm loại bỏ dấu tiếng Việt
   const removeVietnameseTones = (str) => {
     if (!str) return "";
