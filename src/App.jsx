@@ -99,14 +99,6 @@ export default function App() {
     URL.revokeObjectURL(url);
   };
 
-  // State và các biến
-  const [notes, setNotes] = useState([]);
-  const [newWord, setNewWord] = useState("");
-  const [newMeaning, setNewMeaning] = useState("");
-  const [currentTab, setCurrentTab] = useState("từ vựng");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [types] = useState(["từ vựng", "ngữ pháp", "thành ngữ"]);
-
   // Load notes từ localStorage khi mở app
   useEffect(() => {
     const savedNotes = JSON.parse(localStorage.getItem("english-notes")) || [];
@@ -342,7 +334,7 @@ export default function App() {
     </div>
 
    {/* Danh sách ghi chú */}
-            <main className="max-w-2xl mx-auto bg-white rounded-xl shadow-md overflow-hidden p-6">
+    <main className="max-w-2xl mx-auto bg-white rounded-xl shadow-md overflow-hidden p-6">
         <ul className="space-y-3">
           {filteredNotes.length > 0 ? (
             filteredNotes.map((note) => (
