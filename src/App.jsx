@@ -342,7 +342,7 @@ export default function App() {
     </div>
 
    {/* Danh sách ghi chú */}
-      <main className="max-w-2xl mx-auto bg-white rounded-xl shadow-md overflow-hidden p-6">
+            <main className="max-w-2xl mx-auto bg-white rounded-xl shadow-md overflow-hidden p-6">
         <ul className="space-y-3">
           {filteredNotes.length > 0 ? (
             filteredNotes.map((note) => (
