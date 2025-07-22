@@ -11,6 +11,16 @@ const removeVietnameseTones = (str) => {
 };
 
 export default function App() {
+    // State và các biến
+  const [notes, setNotes] = useState([]);
+  const [newWord, setNewWord] = useState("");
+  const [newMeaning, setNewMeaning] = useState("");
+  const [currentTab, setCurrentTab] = useState("từ vựng");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [types] = useState(["từ vựng", "ngữ pháp", "thành ngữ"]);
+  const [editingNote, setEditingNote] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
+  
   // Hàm import file
   const handleImportFile = (e) => {
     const file = e.target.files[0];
@@ -135,6 +145,27 @@ export default function App() {
     saveNotesToLocalStorage(updatedNotes);
   };
 
+  // Hàm chỉnh sửa note
+  const handleEditNote = (note) => {
+    setEditingNote({ ...note });
+    setIsEditing(true);
+  };
+
+  // Hàm lưu thay đổi khi chỉnh sửa
+  const handleSaveEdit = () => {
+    if (!editingNote) return;
+
+    const updatedNotes = notes.map((note) =>
+      note.id === editingNote.id ? editingNote : note
+    );
+    setNotes(updatedNotes);
+    saveNotesToLocalStorage(updatedNotes);
+
+    // Đặt lại trạng thái sau khi lưu
+    setEditingNote(null);
+    setIsEditing(false);
+  };
+
   // Hàm xóa tất cả note
   const handleDeleteAllNotes = () => {
     if (window.confirm("Bạn có chắc chắn muốn xóa tất cả ghi chú?")) {
@@ -215,32 +246,62 @@ export default function App() {
       />
     </div>
 
-    {/* Form nhập ghi chú mới */}
-    <div className="max-w-2xl mx-auto mb-6">
-      <div className="mb-2">
-        <input
-          type="text"
-          placeholder="Nhập từ tiếng Anh..."
-          value={newWord}
-          onChange={(e) => setNewWord(e.target.value)}
-          className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
-        />
+    {/* Form nhập ghi chú mới hoặc chỉnh sửa */}
+      <div className="max-w-2xl mx-auto mb-6">
+        {isEditing ? (
+          <div>
+            <div className="mb-2">
+              <input
+                type="text"
+                placeholder="Nhập từ tiếng Anh..."
+                value={editingNote?.word || ""}
+                onChange={(e) => setEditingNote({ ...editingNote, word: e.target.value })}
+                className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              />
+            </div>
+            <div className="mb-4">
+              <textarea
+                placeholder="Nhập nghĩa tiếng Việt..."
+                value={editingNote?.meaning || ""}
+                onChange={(e) => setEditingNote({ ...editingNote, meaning: e.target.value })}
+                className="w-full h-24 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              />
+            </div>
+            <button
+              onClick={handleSaveEdit}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded transition"
+            >
+              Lưu
+            </button>
+          </div>
+        ) : (
+          <div>
+            <div className="mb-2">
+              <input
+                type="text"
+                placeholder="Nhập từ tiếng Anh..."
+                value={newWord}
+                onChange={(e) => setNewWord(e.target.value)}
+                className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              />
+            </div>
+            <div className="mb-4">
+              <textarea
+                placeholder="Nhập nghĩa tiếng Việt..."
+                value={newMeaning}
+                onChange={(e) => setNewMeaning(e.target.value)}
+                className="w-full h-24 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              />
+            </div>
+            <button
+              onClick={handleAddNote}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded transition"
+            >
+              Lưu
+            </button>
+          </div>
+        )}
       </div>
-      <div className="mb-4">
-        <textarea
-          placeholder="Nhập nghĩa tiếng Việt..."
-          value={newMeaning}
-          onChange={(e) => setNewMeaning(e.target.value)}
-          className="w-full h-24 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
-        />
-      </div>
-      <button
-        onClick={handleAddNote}
-        className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded transition"
-      >
-        Lưu
-      </button>
-    </div>
 
     {/* Nút Import/Export */}
     <div className="max-w-2xl mx-auto mb-6 flex gap-3 justify-between">
@@ -280,35 +341,43 @@ export default function App() {
       </button>
     </div>
 
-    {/* Danh sách ghi chú */}
-    <main className="max-w-2xl mx-auto bg-white rounded-xl shadow-md overflow-hidden p-6">
-      <ul className="space-y-3">
-        {filteredNotes.length > 0 ? (
-          filteredNotes.map((note) => (
-            <li
-              key={note.id}
-              className="flex justify-between items-center bg-gray-50 p-3 rounded-md"
-            >
-              <span>{highlightKeyword(`${note.word}: ${note.meaning}`, searchTerm)}</span>
-              <button
-                onClick={() => handleDeleteNote(note.id)}
-                className="text-sm text-red-600 hover:underline"
+   {/* Danh sách ghi chú */}
+      <main className="max-w-2xl mx-auto bg-white rounded-xl shadow-md overflow-hidden p-6">
+        <ul className="space-y-3">
+          {filteredNotes.length > 0 ? (
+            filteredNotes.map((note) => (
+              <li
+                key={note.id}
+                className="flex justify-between items-center bg-gray-50 p-3 rounded-md"
               >
-                Xóa
-              </button>
+                <span>{highlightKeyword(`${note.word}: ${note.meaning}`, searchTerm)}</span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleEditNote(note)}
+                    className="text-sm text-blue-600 hover:underline"
+                  >
+                    Sửa
+                  </button>
+                  <button
+                    onClick={() => handleDeleteNote(note.id)}
+                    className="text-sm text-red-600 hover:underline"
+                  >
+                    Xóa
+                  </button>
+                </div>
+              </li>
+            ))
+          ) : (
+            <li className="text-gray-500 italic text-center py-4">
+              Không có ghi chú nào.
             </li>
-          ))
-        ) : (
-          <li className="text-gray-500 italic text-center py-4">
-            Không có ghi chú nào.
-          </li>
-        )}
-      </ul>
-    </main>
+          )}
+        </ul>
+      </main>
 
-    <footer className="text-center text-gray-500 text-sm mt-8">
-      &copy; 2025 Học tiếng Anh Tool. Built for self-learning.
-    </footer>
-  </div>
-);
+      <footer className="text-center text-gray-500 text-sm mt-8">
+        &copy; 2025 Học tiếng Anh Tool. Built for self-learning.
+      </footer>
+    </div>
+  );
 }
