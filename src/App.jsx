@@ -99,6 +99,22 @@ export default function App() {
     URL.revokeObjectURL(url);
   };
 
+  //Hàm sắp xếp từ vựng A-Z
+  const handleSortAZ = () => {
+    const sortedNotes = [...notes]
+      .filter((note) => note.type === currentTab)
+      .sort((a, b) =>
+        a.word.toLowerCase().localeCompare(b.word.toLowerCase())
+      );
+  
+    const otherNotes = notes.filter((note) => note.type !== currentTab);
+    const reorderedNotes = [...sortedNotes, ...otherNotes];
+  
+    setNotes(reorderedNotes);
+    saveNotesToLocalStorage(reorderedNotes);
+    alert(`✅ Đã sắp xếp "${currentTab}" theo thứ tự A-Z`);
+};
+
   // Load notes từ localStorage khi mở app
   useEffect(() => {
     const savedNotes = JSON.parse(localStorage.getItem("english-notes")) || [];
@@ -236,6 +252,16 @@ export default function App() {
         onChange={(e) => setSearchTerm(e.target.value)}
         className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
       />
+    </div>
+
+    {/* Nút Sắp xếp */}
+    <div className="max-w-2xl mx-auto mb-6 flex justify-end">
+      <button
+        onClick={handleSortAZ}
+        className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded transition"
+      >
+        🔤 Sắp xếp A-Z
+      </button>
     </div>
 
     {/* Form nhập ghi chú mới hoặc chỉnh sửa */}
