@@ -254,15 +254,6 @@ export default function App() {
       />
     </div>
 
-    {/* Nút Sắp xếp */}
-    <div className="max-w-2xl mx-auto mb-6 flex justify-end">
-      <button
-        onClick={handleSortAZ}
-        className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded transition"
-      >
-        🔤 Sắp xếp A-Z
-      </button>
-    </div>
 
     {/* Form nhập ghi chú mới hoặc chỉnh sửa */}
       <div className="max-w-2xl mx-auto mb-6">
@@ -356,6 +347,16 @@ export default function App() {
         className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded transition"
       >
         🗑️ Xóa tất cả
+      </button>
+    </div>
+
+    {/* Nút Sắp xếp */}
+    <div className="max-w-2xl mx-auto mb-6 flex justify-end">
+      <button
+        onClick={handleSortAZ}
+        className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded transition"
+      >
+        🔤 Sắp xếp A-Z
       </button>
     </div>
 
