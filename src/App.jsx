@@ -142,6 +142,11 @@ export default function App() {
     ];
     setNotes(updatedNotes);
     saveNotesToLocalStorage(updatedNotes);
+    
+    // ✅ THÊM THÔNG BÁO SAU KHI LƯU
+    setNotification(`Từ "${newWord}" đã được thêm vào Note`);
+    setTimeout(() => setNotification(""), 3000); // Ẩn sau 3 giây
+    
     setNewWord("");
     setNewMeaning("");
   };
@@ -254,6 +259,12 @@ export default function App() {
       />
     </div>
 
+    {/* Thông báo */}
+    {notification && (
+      <div className="max-w-2xl mx-auto mb-4 p-3 bg-green-100 text-green-800 text-sm rounded-md text-center">
+        {notification}
+      </div>
+    )}
 
     {/* Form nhập ghi chú mới hoặc chỉnh sửa */}
       <div className="max-w-2xl mx-auto mb-6">
