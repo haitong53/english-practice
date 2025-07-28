@@ -225,7 +225,7 @@ export default function App() {
   return (
   <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6 font-sans text-gray-800">
     <header className="text-center mb-8">
-      <h1 className="text-4xl font-bold text-indigo-700">Học tiếng Anh</h1>
+      <h1 className="text-4xl font-bold text-indigo-700">Ghi Chú Tiếng Anh</h1>
       <p className="text-gray-600 mt-2">Ghi chú từ vựng, ngữ pháp, thành ngữ...</p>
     </header>
 
