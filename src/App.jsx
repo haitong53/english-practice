@@ -20,6 +20,7 @@ export default function App() {
   const [types] = useState(["từ vựng", "ngữ pháp", "thành ngữ"]);
   const [editingNote, setEditingNote] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [notification, setNotification] = useState("");
   
   // Hàm import file
   const handleImportFile = (e) => {
