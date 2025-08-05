@@ -415,10 +415,16 @@ export default function App() {
                 key={note.id}
                 className="flex justify-between items-center bg-gray-50 p-3 rounded-md"
               >
+                {/* Từ và nghĩa */}
                 <span>{highlightKeyword(`${note.word}: ${note.meaning}`, searchTerm)}</span>
+                
+                {/* Giải thích */}
                 {note.exampleOrExplanation && (
-                  <p className="text-sm italic text-gray-600 mt-1">{note.exampleOrExplanation}</p>
+                  <p className="text-sm italic text-blue-500 mt-1">{note.exampleOrExplanation}</p>
                 )}
+
+
+                {/* Nút Sửa/Xóa */}
                 <div className="flex gap-2">
                   <button
                     onClick={() => handleEditNote(note)}
