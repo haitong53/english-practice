@@ -178,6 +178,10 @@ export default function App() {
     setNotes(updatedNotes);
     saveNotesToLocalStorage(updatedNotes);
 
+    //THÊM THÔNG BÁO SAU KHI CẬP NHẬT
+    setNotification(`Từ "${editingNote.word}" đã được cập nhật thành công`);
+    setTimeout(() => setNotification(""), 3000);
+
     // Đặt lại trạng thái sau khi lưu
     setEditingNote(null);
     setIsEditing(false);
