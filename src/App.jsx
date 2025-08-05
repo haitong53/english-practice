@@ -21,6 +21,7 @@ export default function App() {
   const [editingNote, setEditingNote] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [notification, setNotification] = useState("");
+  const [exampleOrExplanation, setExampleOrExplanation] = useState("");
   
   // Hàm import file
   const handleImportFile = (e) => {
@@ -138,6 +139,7 @@ export default function App() {
         type: currentTab,
         word: newWord,
         meaning: newMeaning,
+        exampleOrExplanation: exampleOrExplanation.trim(), // Lưu ví dụ/giải thích
         addedDate: new Date().toISOString(),
       },
     ];
@@ -150,6 +152,7 @@ export default function App() {
     
     setNewWord("");
     setNewMeaning("");
+    setExampleOrExplanation(""); // Reset trường mới
   };
 
   // Hàm xóa một note
@@ -324,6 +327,23 @@ export default function App() {
         )}
       </div>
 
+    {/* ✅ THÊM TRƯỜNG INPUT MỚI ĐÂY */}
+      <div className="mb-4">
+          <textarea
+            placeholder="Nhập ví dụ hoặc giải thích thêm (tùy chọn)..."
+            value={exampleOrExplanation}
+            onChange={(e) => setExampleOrExplanation(e.target.value)}
+            className="w-full h-24 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          />
+        </div>
+        <button
+          onClick={handleAddNote}
+          className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded transition"
+        >
+          Lưu
+        </button>
+      </div>
+
     {/* Nút Import/Export */}
     <div className="max-w-2xl mx-auto mb-6 flex gap-3 justify-between">
       <label className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded cursor-pointer">
@@ -382,6 +402,9 @@ export default function App() {
                 className="flex justify-between items-center bg-gray-50 p-3 rounded-md"
               >
                 <span>{highlightKeyword(`${note.word}: ${note.meaning}`, searchTerm)}</span>
+                {note.exampleOrExplanation && (
+                  <p className="text-sm italic text-gray-600 mt-1">{note.exampleOrExplanation}</p>
+                )}
                 <div className="flex gap-2">
                   <button
                     onClick={() => handleEditNote(note)}
