@@ -166,6 +166,13 @@ export default function App() {
   const handleEditNote = (note) => {
     setEditingNote({ ...note });
     setIsEditing(true);
+
+     //TỰ ĐỘNG CUỘN LÊN ĐẦU TRANG
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+    
   };
 
   // Hàm lưu thay đổi khi chỉnh sửa
