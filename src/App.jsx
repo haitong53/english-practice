@@ -415,17 +415,19 @@ export default function App() {
                 key={note.id}
                 className="flex justify-between items-center bg-gray-50 p-3 rounded-md"
               >
-                {/* Từ và nghĩa */}
-                <span>{highlightKeyword(`${note.word}: ${note.meaning}`, searchTerm)}</span>
-                
-                {/* Giải thích */}
-                {note.exampleOrExplanation && (
-                  <p className="text-sm italic text-blue-500 mt-1">{note.exampleOrExplanation}</p>
-                )}
+                  {/* Cột trái: Từ, nghĩa và giải thích */}
+                <div className="flex-1 pr-4">
+                  <span>{highlightKeyword(`${note.word}: ${note.meaning}`, searchTerm)}</span>
+                  {note.exampleOrExplanation && (
+                    <p className="text-sm italic text-blue-500 mt-1 mb-0">
+                      {note.exampleOrExplanation}
+                    </p>
+                  )}
+                </div>
 
 
                 {/* Nút Sửa/Xóa */}
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-1">
                   <button
                     onClick={() => handleEditNote(note)}
                     className="text-sm text-blue-600 hover:underline"
