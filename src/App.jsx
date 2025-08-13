@@ -413,7 +413,7 @@ export default function App() {
             filteredNotes.map((note) => (
               <li
                 key={note.id}
-                className="flex justify-between items-center bg-gray-50 p-3 rounded-md"
+                className="flex justify-between items-start bg-gray-50 p-3 rounded-md transition-all duration-200 hover:bg-white hover:shadow-md hover:scale-[1.02]"
               >
                   {/* Cột trái: Từ, nghĩa và giải thích */}
                 <div className="flex-1 pr-4">
@@ -430,13 +430,13 @@ export default function App() {
                 <div className="flex flex-col gap-1">
                   <button
                     onClick={() => handleEditNote(note)}
-                    className="text-sm text-blue-600 hover:underline"
+                    className="text-sm text-blue-600 hover:text-blue-800 hover:underline transition-colors"
                   >
                     Sửa
                   </button>
                   <button
                     onClick={() => handleDeleteNote(note.id)}
-                    className="text-sm text-red-600 hover:underline"
+                    className="text-sm text-red-600 hover:text-red-800 hover:underline transition-colors"
                   >
                     Xóa
                   </button>
