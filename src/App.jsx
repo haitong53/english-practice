@@ -261,6 +261,26 @@ export default function App() {
       <p className="text-gray-600 mt-2">Ghi chú từ vựng, ngữ pháp, thành ngữ...</p>
     </header>
 
+    {/* Tabs */}
+    <nav className="mb-4">
+      <ul className="flex space-x-4 justify-center">
+        {types.map((type) => (
+          <li key={type}>
+            <button
+              onClick={() => setCurrentTab(type)}
+              className={`px-4 py-2 rounded-md ${
+                currentTab === type
+                  ? "bg-indigo-600 text-white"
+                  : "bg-gray-200 hover:bg-gray-300"
+              }`}
+            >
+              {type.charAt(0).toUpperCase() + type.slice(1)}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </nav>
+
     {/* 🟦 GOOGLE DỊCH - LUÔN HIỂN THỊ */}
     <div className="max-w-2xl mx-auto mb-6">
       <h2 className="text-lg font-semibold text-gray-700 mb-3">Google Dịch</h2>
@@ -294,26 +314,6 @@ export default function App() {
         </div>
       )}
     </div>
-
-    {/* Tabs */}
-    <nav className="mb-4">
-      <ul className="flex space-x-4 justify-center">
-        {types.map((type) => (
-          <li key={type}>
-            <button
-              onClick={() => setCurrentTab(type)}
-              className={`px-4 py-2 rounded-md ${
-                currentTab === type
-                  ? "bg-indigo-600 text-white"
-                  : "bg-gray-200 hover:bg-gray-300"
-              }`}
-            >
-              {type.charAt(0).toUpperCase() + type.slice(1)}
-            </button>
-          </li>
-        ))}
-      </ul>
-    </nav>
 
     {/* Ô tìm kiếm */}
     <div className="max-w-2xl mx-auto mb-6">
