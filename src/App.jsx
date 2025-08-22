@@ -277,13 +277,13 @@ export default function App() {
           onClick={() => handleTranslate("en", "vi")}
           className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded transition"
         >
-          GB → VN
+          EN → VN
         </button>
         <button
           onClick={() => handleTranslate("vi", "en")}
           className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded transition"
         >
-          VN → GB
+          VN → EN
         </button>
       </div>
   
