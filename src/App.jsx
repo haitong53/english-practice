@@ -254,6 +254,24 @@ export default function App() {
     });
   };
 
+  // Hàm phát âm từ tiếng Anh
+  const speakText = (text) => {
+    if (!text) return;
+  
+    // Kiểm tra trình duyệt có hỗ trợ SpeechSynthesis không
+    if ('speechSynthesis' in window) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'en-US'; // Giọng Mỹ
+      utterance.rate = 1; // Tốc độ phát âm (0.1 - 10)
+      utterance.pitch = 1; // Cao độ (0 - 2)
+      utterance.volume = 1; // Âm lượng (0 - 1)
+  
+      window.speechSynthesis.speak(utterance);
+    } else {
+      alert("Trình duyệt của bạn không hỗ trợ phát âm.");
+    }
+  };
+
   return (
   <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6 font-sans text-gray-800">
     <header className="text-center mb-8">
@@ -310,6 +328,13 @@ export default function App() {
       {translateResult && (
         <div className="mt-4 p-4 bg-gray-50 rounded-md">
           <p className="font-medium">Kết quả:</p>
+          <button
+            onClick={() => speakText(translateResult)}
+            className="text-indigo-600 hover:text-indigo-800"
+            title="Phát âm"
+          >
+            🔊
+          </button>
           <p className="mt-1">{translateResult}</p>
         </div>
       )}
@@ -480,6 +505,13 @@ export default function App() {
 
                 {/* Nút Sửa/Xóa */}
                 <div className="flex flex-col gap-1">
+                    <button
+                      onClick={() => speakText(note.word)}
+                      className="text-sm text-indigo-600 hover:text-indigo-800 transition-colors"
+                      title="Phát âm"
+                    >
+                      🔊
+                  </button>
                   <button
                     onClick={() => handleEditNote(note)}
                     className="text-sm text-blue-600 hover:text-blue-800 hover:underline transition-colors"
