@@ -17,11 +17,30 @@ export default function App() {
   const [newMeaning, setNewMeaning] = useState("");
   const [currentTab, setCurrentTab] = useState("từ vựng");
   const [searchTerm, setSearchTerm] = useState("");
-  const [types] = useState(["từ vựng", "ngữ pháp", "thành ngữ"]);
+  const [types] = useState(["từ vựng", "ngữ pháp", "thành ngữ", "google dịch"]);
   const [editingNote, setEditingNote] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [notification, setNotification] = useState("");
   const [exampleOrExplanation, setExampleOrExplanation] = useState("");
+  const [translateInput, setTranslateInput] = useState("");
+  const [translateResult, setTranslateResult] = useState("");
+
+
+  // Hàm gọi Google Translate API (giả lập)
+  const handleTranslate = async (sourceLang, targetLang) => {
+    if (!translateInput.trim()) return;
+  
+    try {
+      // Đây là ví dụ dùng API miễn phí (có giới hạn)
+      const response = await fetch(
+        `https://api.mymemory.translated.net/get?q=${encodeURIComponent(translateInput)}&langpair=${sourceLang}|${targetLang}`
+      );
+      const data = await response.json();
+      setTranslateResult(data.responseData.translatedText || "Không thể dịch");
+    } catch (error) {
+      setTranslateResult("Lỗi khi dịch. Vui lòng thử lại.");
+    }
+  };
   
   // Hàm import file
   const handleImportFile = (e) => {
@@ -242,6 +261,41 @@ export default function App() {
       <h1 className="text-4xl font-bold text-indigo-700">Ghi Chú Tiếng Anh</h1>
       <p className="text-gray-600 mt-2">Ghi chú từ vựng, ngữ pháp, thành ngữ...</p>
     </header>
+
+    {currentTab === "google dịch" && (
+      <div className="max-w-2xl mx-auto mb-6">
+        <h2 className="text-xl font-semibold text-gray-700 mb-4">Google Dịch</h2>
+        
+        <textarea
+          value={translateInput}
+          onChange={(e) => setTranslateInput(e.target.value)}
+          placeholder="Nhập từ hoặc câu cần dịch..."
+          className="w-full h-24 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
+        />
+    
+        <div className="mt-4 flex gap-3">
+          <button
+            onClick={() => handleTranslate("en", "vi")}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded transition"
+          >
+            🇬🇧 → 🇻🇳
+          </button>
+          <button
+            onClick={() => handleTranslate("vi", "en")}
+            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded transition"
+          >
+            🇻🇳 → 🇬🇧
+          </button>
+        </div>
+    
+        {translateResult && (
+          <div className="mt-4 p-4 bg-gray-50 rounded-md">
+            <p className="font-medium">Kết quả:</p>
+            <p className="mt-1">{translateResult}</p>
+          </div>
+        )}
+      </div>
+    )}
 
     {/* Tabs */}
     <nav className="mb-4">
