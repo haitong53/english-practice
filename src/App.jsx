@@ -358,35 +358,39 @@ export default function App() {
       </div>
     )}
 
-    {/* Form nhập ghi chú mới hoặc chỉnh sửa */}
-      <div className="max-w-2xl mx-auto mb-6">
-        {isEditing ? (
-          <div>
-            <div className="mb-2">
-              <input
-                type="text"
-                placeholder="Nhập từ tiếng Anh..."
-                value={editingNote?.word || ""}
-                onChange={(e) => setEditingNote({ ...editingNote, word: e.target.value })}
-                className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
-              />
-            </div>
-            <div className="mb-4">
-              <textarea
-                placeholder="Nhập nghĩa tiếng Việt..."
-                value={editingNote?.meaning || ""}
-                onChange={(e) => setEditingNote({ ...editingNote, meaning: e.target.value })}
-                className="w-full h-24 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
-              />
-            </div>
-                {/* ✅ THÊM TRƯỜNG GIẢI THÍCH VÀO FORM CHỈNH SỬA */}
-            <div className="mb-4">
-              <textarea
-                placeholder="Nhập ví dụ hoặc giải thích thêm (tùy chọn)..."
-                value={editingNote?.exampleOrExplanation || ""}
-                onChange={(e) => setEditingNote({ ...editingNote, exampleOrExplanation: e.target.value })}
-                className="w-full h-24 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
-              />
+        {/* Form nhập ghi chú mới */}
+            <div className="max-w-md mx-auto mb-6">
+              <div className="mb-2">
+                <input
+                  type="text"
+                  placeholder="Nhập từ tiếng Anh..."
+                  value={newWord}
+                  onChange={(e) => setNewWord(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm"
+                />
+              </div>
+              <div className="mb-4">
+                <textarea
+                  placeholder="Nhập nghĩa tiếng Việt..."
+                  value={newMeaning}
+                  onChange={(e) => setNewMeaning(e.target.value)}
+                  className="w-full h-24 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm"
+                />
+              </div>
+              <div className="mb-4">
+                <textarea
+                  placeholder="Nhập ví dụ hoặc giải thích thêm (tùy chọn)..."
+                  value={exampleOrExplanation}
+                  onChange={(e) => setExampleOrExplanation(e.target.value)}
+                  className="w-full h-24 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm"
+                />
+              </div>
+              <button
+                onClick={handleAddNote}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded transition text-sm"
+              >
+                Lưu
+              </button>
             </div>
             <button
               onClick={handleSaveEdit}
@@ -436,8 +440,8 @@ export default function App() {
       </div>
 
     {/* Nút Import/Export */}
-    <div className="max-w-2xl mx-auto mb-6 flex gap-3 justify-between">
-      <label className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded cursor-pointer">
+    <div className="max-w-md mx-auto mb-6 flex flex-wrap gap-2 justify-between">
+      <label className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded cursor-pointer text-sm">
         Import từ file
         <input
           type="file"
@@ -446,17 +450,17 @@ export default function App() {
           onChange={handleImportFile}
         />
       </label>
-
-      <div className="space-x-3">
+    
+      <div className="flex flex-wrap gap-2">
         <button
           onClick={handleExportTXT}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm"
         >
           Export .txt
         </button>
         <button
           onClick={handleExportJSON}
-          className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded"
+          className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded text-sm"
         >
           Export .json
         </button>
@@ -464,10 +468,10 @@ export default function App() {
     </div>
 
     {/* Nút Xóa tất cả */}
-    <div className="max-w-2xl mx-auto mb-6 flex justify-end">
+    <div className="max-w-md mx-auto mb-6 flex justify-end">
       <button
         onClick={handleDeleteAllNotes}
-        className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded transition"
+        className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded transition text-sm"
       >
         🗑️ Xóa tất cả
       </button>
@@ -484,7 +488,7 @@ export default function App() {
     </div>
 
    {/* Danh sách ghi chú */}
-    <main className="max-w-2xl mx-auto bg-white rounded-xl shadow-md overflow-hidden p-6">
+    <main className="max-w-md mx-auto bg-white rounded-xl shadow-md overflow-hidden p-6">
         <ul className="space-y-3">
           {filteredNotes.length > 0 ? (
             filteredNotes.map((note) => (
@@ -492,7 +496,7 @@ export default function App() {
                 key={note.id}
                 className="flex justify-between items-start bg-gray-50 p-3 rounded-md transition-all duration-200 hover:bg-white hover:shadow-md hover:scale-[1.02]"
               >
-                  {/* Cột trái: Từ, nghĩa và giải thích */}
+                {/* Cột trái: Từ + Nghĩa + Giải thích */}
                 <div className="flex-1 pr-4">
                   <span>{highlightKeyword(`${note.word}: ${note.meaning}`, searchTerm)}</span>
                   {note.exampleOrExplanation && (
@@ -501,16 +505,15 @@ export default function App() {
                     </p>
                   )}
                 </div>
-
-
-                {/* Nút Sửa/Xóa */}
+      
+                {/* Cột phải: Nút Sửa / Xóa / Phát âm */}
                 <div className="flex flex-col gap-1">
-                    <button
-                      onClick={() => speakText(note.word)}
-                      className="text-sm text-indigo-600 hover:text-indigo-800 transition-colors"
-                      title="Phát âm"
-                    >
-                      🔊
+                  <button
+                    onClick={() => speakText(note.word)}
+                    className="text-sm text-indigo-600 hover:text-indigo-800 transition-colors"
+                    title="Phát âm"
+                  >
+                    🔊
                   </button>
                   <button
                     onClick={() => handleEditNote(note)}
@@ -534,6 +537,8 @@ export default function App() {
           )}
         </ul>
       </main>
+
+        
 
       <footer className="text-center text-gray-500 text-sm mt-8">
         &copy; 2025 Học tiếng Anh Tool. Built for self-learning.
