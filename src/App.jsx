@@ -274,6 +274,8 @@ export default function App() {
 
   return (
   <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6 font-sans text-gray-800">
+    <div className="max-w-md mx-auto">
+     {/* header */}
     <header className="text-center mb-8">
       <h1 className="text-4xl font-bold text-indigo-700">Ghi Chú Tiếng Anh</h1>
       <p className="text-gray-600 mt-2">Ghi chú từ vựng, ngữ pháp, thành ngữ...</p>
@@ -300,7 +302,7 @@ export default function App() {
     </nav>
 
     {/* 🟦 GOOGLE DỊCH - LUÔN HIỂN THỊ */}
-    <div className="max-w-2xl mx-auto mb-6">
+    <div className="mb-6">
       <h2 className="text-lg font-semibold text-gray-700 mb-3">Google Dịch</h2>
       
       <textarea
@@ -359,7 +361,7 @@ export default function App() {
     )}
 
         {/* Form nhập ghi chú mới */}
-            <div className="max-w-md mx-auto mb-6">
+            <div className="mb-6">
               <div className="mb-2">
                 <input
                   type="text"
@@ -440,7 +442,7 @@ export default function App() {
       </div>
 
     {/* Nút Import/Export */}
-    <div className="max-w-md mx-auto mb-6 flex flex-wrap gap-2 justify-between">
+    <div className="mb-6 flex flex-wrap gap-2 justify-between">
       <label className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded cursor-pointer text-sm">
         Import từ file
         <input
@@ -468,7 +470,7 @@ export default function App() {
     </div>
 
     {/* Nút Xóa tất cả */}
-    <div className="max-w-md mx-auto mb-6 flex justify-end">
+    <div className="mb-6 flex justify-end">
       <button
         onClick={handleDeleteAllNotes}
         className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded transition text-sm"
@@ -478,7 +480,7 @@ export default function App() {
     </div>
 
     {/* Nút Sắp xếp */}
-    <div className="max-w-2xl mx-auto mb-6 flex justify-end">
+    <div className="mb-6 flex justify-end">
       <button
         onClick={handleSortAZ}
         className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded transition"
@@ -488,7 +490,7 @@ export default function App() {
     </div>
 
    {/* Danh sách ghi chú */}
-    <main className="max-w-md mx-auto bg-white rounded-xl shadow-md overflow-hidden p-6">
+    <main className="bg-white rounded-xl shadow-md overflow-hidden p-6">
         <ul className="space-y-3">
           {filteredNotes.length > 0 ? (
             filteredNotes.map((note) => (
@@ -537,7 +539,7 @@ export default function App() {
           )}
         </ul>
       </main>
-
+      </div>
         
 
       <footer className="text-center text-gray-500 text-sm mt-8">
