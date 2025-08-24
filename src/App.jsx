@@ -175,7 +175,7 @@ export default function App() {
 
   // Hàm xóa một note
   const handleDeleteNote = (id) => {
-    console.log("Hàm handleDeleteNote được gọi với ID:", id);
+      alert("Hàm handleDeleteNote đã chạy!");
     const noteToDelete = notes.find(note => note.id === id);
     if (!noteToDelete) {
       Swal.fire("Lỗi", "Không tìm thấy từ để xóa!", "error");
