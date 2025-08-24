@@ -24,6 +24,8 @@ export default function App() {
   const [exampleOrExplanation, setExampleOrExplanation] = useState("");
   const [translateInput, setTranslateInput] = useState("");
   const [translateResult, setTranslateResult] = useState("");
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [noteToDelete, setNoteToDelete] = useState(null);
 
 
   // Hàm gọi Google Translate API (giả lập)
@@ -178,7 +180,8 @@ export default function App() {
     const updatedNotes = notes.filter((note) => note.id !== id);
     setNotes(updatedNotes);
     saveNotesToLocalStorage(updatedNotes);
-    alert(`✅ Đã xóa từ thành công!`);
+    setNotification("Đã xóa từ thành công!");
+    setTimeout(() => setNotification(""), 3000);
   };
   
 
@@ -525,20 +528,46 @@ export default function App() {
                   >
                     Sửa
                   </button>
-                  <button
-                    onClick={() => {
-                      // 1. Hỏi người dùng
-                      const isConfirmed = window.confirm(`Bạn có chắc chắn muốn xóa từ "${note.word}" không?`);
-                      
-                      // 2. Nếu người dùng chọn "Có"
-                      if (isConfirmed) {
-                        handleDeleteNote(note.id); // Gọi hàm xóa
-                      }
-                    }}
-                    className="text-sm text-red-600 hover:text-red-800 hover:underline transition-colors"
-                  >
-                    Xóa
-                  </button>
+
+                  {showDeleteModal && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                      <div className="bg-white p-6 rounded-lg shadow-lg max-w-sm w-full">
+                        <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                          Xác nhận xóa
+                        </h3>
+                        <p className="text-gray-600 mb-6">
+                          Bạn có chắc chắn muốn xóa từ "{noteToDelete?.word}" không?
+                        </p>
+                        <div className="flex justify-end gap-3">
+                          <button
+                            onClick={() => setShowDeleteModal(false)}
+                            className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded transition text-sm"
+                          >
+                            Hủy
+                          </button>
+                          <button
+                            onClick={() => {
+                              handleDeleteNote(noteToDelete.id);
+                              setShowDeleteModal(false);
+                              setNoteToDelete(null);
+                            }}
+                            className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded transition text-sm"
+                          >
+                            Xóa
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                      <button
+                           onClick={() => {
+                            setNoteToDelete(note);
+                            setShowDeleteModal(true);
+                          }}
+                          className="text-sm text-red-600 hover:text-red-800 hover:underline transition-colors"
+                          >
+                            Xóa
+                      </button>                  
                 </div>
               </li>
             ))
