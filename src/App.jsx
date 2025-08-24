@@ -174,29 +174,36 @@ export default function App() {
   };
 
   // Hàm xóa một note
-  const handleDeleteNote = (id) => {
-      alert("Hàm handleDeleteNote đã chạy!");
+   const handleDeleteNote = (id) => {
     const noteToDelete = notes.find(note => note.id === id);
-    if (!noteToDelete) {
-      Swal.fire("Lỗi", "Không tìm thấy từ để xóa!", "error");
-      return;
-    }
+    if (!noteToDelete) return;
   
-    Swal.fire({
-      title: "Xác nhận xóa",
-      text: `Bạn có chắc chắn muốn xóa từ "${noteToDelete.word}" không?`,
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonText: "Có, xóa!",
-      cancelButtonText: "Không, giữ lại"
-    }).then((result) => {
-      if (result.isConfirmed) {
+    // Dùng SweetAlert2
+    if (typeof Swal !== 'undefined') {
+      Swal.fire({
+        title: 'Xác nhận xóa',
+        text: `Bạn có chắc chắn muốn xóa từ "${noteToDelete.word}" không?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Có, xóa!',
+        cancelButtonText: 'Không'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          const updatedNotes = notes.filter((note) => note.id !== id);
+          setNotes(updatedNotes);
+          saveNotesToLocalStorage(updatedNotes);
+          Swal.fire('Đã xóa!', 'Từ đã được xóa thành công.', 'success');
+        }
+      });
+    } else {
+      // Fallback nếu SweetAlert2 không load được
+      const isConfirmed = window.confirm(`Bạn có chắc chắn muốn xóa từ "${noteToDelete.word}" không?`);
+      if (isConfirmed) {
         const updatedNotes = notes.filter((note) => note.id !== id);
         setNotes(updatedNotes);
         saveNotesToLocalStorage(updatedNotes);
-        Swal.fire("Đã xóa!", `Từ "${noteToDelete.word}" đã được xóa.`, "success");
       }
-    });
+    }
   };
 
   // Hàm chỉnh sửa note
