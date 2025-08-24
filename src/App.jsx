@@ -12,6 +12,8 @@ const removeVietnameseTones = (str) => {
 
 export default function App() {
     // State và các biến
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [noteToDelete, setNoteToDelete] = useState(null);
   const [notes, setNotes] = useState([]);
   const [newWord, setNewWord] = useState("");
   const [newMeaning, setNewMeaning] = useState("");
@@ -24,8 +26,7 @@ export default function App() {
   const [exampleOrExplanation, setExampleOrExplanation] = useState("");
   const [translateInput, setTranslateInput] = useState("");
   const [translateResult, setTranslateResult] = useState("");
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [noteToDelete, setNoteToDelete] = useState(null);
+
 
 
   // Hàm gọi Google Translate API (giả lập)
