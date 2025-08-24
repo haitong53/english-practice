@@ -367,50 +367,42 @@ export default function App() {
     )}
 
         {/* Form nhập ghi chú mới */}
-            <div className="mb-6">
-              <div className="mb-2">
-                <input
-                  type="text"
-                  placeholder="Nhập từ tiếng Anh..."
-                  value={newWord}
-                  onChange={(e) => setNewWord(e.target.value)}
-                  className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm"
-                />
-              </div>
-              <div className="mb-4">
-                <textarea
-                  placeholder="Nhập nghĩa tiếng Việt..."
-                  value={newMeaning}
-                  onChange={(e) => setNewMeaning(e.target.value)}
-                  className="w-full h-24 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm"
-                />
-              </div>
-              <div className="mb-4">
-                <textarea
-                  placeholder="Nhập ví dụ hoặc giải thích thêm (tùy chọn)..."
-                  value={exampleOrExplanation}
-                  onChange={(e) => setExampleOrExplanation(e.target.value)}
-                  className="w-full h-24 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm"
-                />
-              </div>
-              <button
-                onClick={handleAddNote}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded transition text-sm"
-              >
-                Lưu
-              </button>
+        {isEditing ? (
+          <div className="mb-6">
+            <div className="mb-2">
+              <input
+                type="text"
+                placeholder="Nhập từ tiếng Anh..."
+                value={newWord}
+                onChange={(e) => setNewWord(e.target.value)}
+                className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm"
+              />
+            </div>
+            <div className="mb-4">
+              <textarea
+                placeholder="Nhập nghĩa tiếng Việt..."
+                value={newMeaning}
+                onChange={(e) => setNewMeaning(e.target.value)}
+                className="w-full h-24 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm"
+              />
+            </div>
+            <div className="mb-4">
+              <textarea
+                placeholder="Nhập ví dụ hoặc giải thích thêm (tùy chọn)..."
+                value={exampleOrExplanation}
+                onChange={(e) => setExampleOrExplanation(e.target.value)}
+                className="w-full h-24 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm"
+              />
             </div>
             <button
               onClick={handleSaveEdit}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded transition"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded transition text-sm"
             >
               Lưu
             </button>
           </div>
         ) : (
-
-         // form thêm mới 
-          <div>
+          <div className="mb-6">
             <div className="mb-2">
               <input
                 type="text"
@@ -428,15 +420,14 @@ export default function App() {
                 className="w-full h-24 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
               />
             </div>
-            {/* ✅ THÊM TRƯỜNG INPUT MỚI ĐÂY */}
             <div className="mb-4">
-                <textarea
-                  placeholder="Nhập ví dụ hoặc giải thích thêm (tùy chọn)..."
-                  value={exampleOrExplanation}
-                  onChange={(e) => setExampleOrExplanation(e.target.value)}
-                  className="w-full h-24 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                />
-              </div>
+              <textarea
+                placeholder="Nhập ví dụ hoặc giải thích thêm (tùy chọn)..."
+                value={exampleOrExplanation}
+                onChange={(e) => setExampleOrExplanation(e.target.value)}
+                className="w-full h-24 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              />
+            </div>
             <button
               onClick={handleAddNote}
               className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded transition"
@@ -445,7 +436,6 @@ export default function App() {
             </button>
           </div>
         )}
-      </div>
 
     {/* Nút Import/Export */}
     <div className="mb-6 flex flex-wrap gap-2 justify-between">
