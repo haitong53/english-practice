@@ -175,21 +175,27 @@ export default function App() {
 
   // Hàm xóa một note
   const handleDeleteNote = (id) => {
-    // Tìm từ cần xóa để hiển thị tên
+    // Tìm từ cần xóa
     const noteToDelete = notes.find(note => note.id === id);
-    if (!noteToDelete) return;
+    
+    // Nếu không tìm thấy → dừng
+    if (!noteToDelete) {
+      console.warn("Không tìm thấy note để xóa:", id);
+      return;
+    }
   
     // Hiển thị cảnh báo
     const isConfirmed = window.confirm(
       `Bạn có chắc chắn muốn xóa từ "${noteToDelete.word}" không?`
     );
   
+    // Nếu người dùng chọn "OK"
     if (isConfirmed) {
       const updatedNotes = notes.filter((note) => note.id !== id);
       setNotes(updatedNotes);
       saveNotesToLocalStorage(updatedNotes);
     }
-  };
+};
 
   // Hàm chỉnh sửa note
   const handleEditNote = (note) => {
