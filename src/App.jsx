@@ -496,6 +496,38 @@ export default function App() {
     </div>
 
    {/* Danh sách ghi chú */}
+
+  {showDeleteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg max-w-sm w-full">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">
+              Xác nhận xóa
+            </h3>
+            <p className="text-gray-600 mb-6">
+              Bạn có chắc chắn muốn xóa từ "{noteToDelete?.word}" không?
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded transition text-sm"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={() => {
+                  handleDeleteNote(noteToDelete.id);
+                  setShowDeleteModal(false);
+                  setNoteToDelete(null);
+                }}
+                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded transition text-sm"
+              >
+                Xóa
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+  
     <main className="bg-white rounded-xl shadow-md overflow-hidden p-6">
         <ul className="space-y-3">
           {filteredNotes.length > 0 ? (
@@ -529,45 +561,16 @@ export default function App() {
                   >
                     Sửa
                   </button>
-
-                  {showDeleteModal && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                      <div className="bg-white p-6 rounded-lg shadow-lg max-w-sm w-full">
-                        <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                          Xác nhận xóa
-                        </h3>
-                        <p className="text-gray-600 mb-6">
-                          Bạn có chắc chắn muốn xóa từ "{noteToDelete?.word}" không?
-                        </p>
-                        <div className="flex justify-end gap-3">
-                          <button
-                            onClick={() => setShowDeleteModal(false)}
-                            className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded transition text-sm"
-                          >
-                            Hủy
-                          </button>
-                          <button
-                            onClick={() => {
-                              handleDeleteNote(noteToDelete.id);
-                              setShowDeleteModal(false);
-                              setNoteToDelete(null);
-                            }}
-                            className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded transition text-sm"
-                          >
-                            Xóa
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                  
                       <button
-                           onClick={() => {
-                            setNoteToDelete(note);
-                            setShowDeleteModal(true);
-                          }}
-                          className="text-sm text-red-600 hover:text-red-800 hover:underline transition-colors"
-                          >
-                            Xóa
+                        onClick={() => {
+                          setNoteToDelete(note); // Lưu ghi chú cần xóa
+                          setShowDeleteModal(true); // Hiển thị modal
+                          console.log("showDeleteModal:", true); // Kiểm tra
+                        }}
+                        className="text-sm text-red-600 hover:text-red-800 hover:underline transition-colors"
+                      >
+                        Xóa
                       </button>                  
                 </div>
               </li>
