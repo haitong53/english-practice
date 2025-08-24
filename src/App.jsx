@@ -1,3 +1,17 @@
+import { 
+  collection, 
+  getDocs, 
+  deleteDoc, 
+  doc, 
+  updateDoc,
+  query,
+  where
+} from "firebase/firestore";
+import { db } from "./firebase"; // Đường dẫn đến firebase.js
+import { collection, addDoc, getDocs, updateDoc, deleteDoc, doc, onSnapshot } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { storage } from "./firebase"; // Đảm bảo firebase.js export storage
+import { collection, addDoc, writeBatch } from "firebase/firestore";
 import { useState, useEffect } from "react";
 
 // Hàm loại bỏ dấu tiếng Việt
@@ -45,185 +59,254 @@ export default function App() {
   };
   
   // Hàm import file
-  const handleImportFile = (e) => {
+  const handleImportFile = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
-    const reader = new FileReader();
-
-    if (file.type === "application/json" || file.name.endsWith(".json")) {
-      reader.onload = (event) => {
-        try {
-          const importedNotes = JSON.parse(event.target.result);
-          const mergedNotes = [...notes, ...importedNotes];
-          setNotes(mergedNotes);
-          saveNotesToLocalStorage(mergedNotes);
-          alert("Đã nhập dữ liệu từ file JSON thành công!");
-        } catch (error) {
-          alert("Lỗi: File JSON không hợp lệ.");
-        }
-      };
-      reader.readAsText(file);
-    } else if (file.type === "text/plain" || file.name.endsWith(".txt")) {
-      reader.onload = (event) => {
-        const lines = event.target.result.split("\n").filter(Boolean);
-        const importedNotes = [];
-
-        lines.forEach((line) => {
-          line = line.trim();
-          if (line.includes("=")) {
-            const [word, meaning] = line.split("=");
-            importedNotes.push({
-              id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-              word: word.trim(),
-              meaning: meaning.trim(),
-              type: currentTab,
-              addedDate: new Date().toISOString(),
+  
+    try {
+      const reader = new FileReader();
+  
+      if (file.type === "application/json" || file.name.endsWith(".json")) {
+        reader.onload = async (event) => {
+          try {
+            const importedNotes = JSON.parse(event.target.result);
+            const notesRef = collection(db, "notes");
+            const batch = writeBatch(db);
+  
+            importedNotes.forEach((note) => {
+              const newDocRef = doc(notesRef);
+              batch.set(newDocRef, {
+                ...note,
+                addedDate: new Date().toISOString(),
+                userId: user?.uid // Nếu dùng auth
+              });
             });
+  
+            await batch.commit();
+            setNotification("Đã nhập dữ liệu từ file JSON thành công!");
+            setTimeout(() => setNotification(""), 3000);
+          } catch (error) {
+            setNotification("Lỗi: File JSON không hợp lệ.");
+            setTimeout(() => setNotification(""), 3000);
           }
-        });
-
-        const mergedNotes = [...notes, ...importedNotes];
-        setNotes(mergedNotes);
-        saveNotesToLocalStorage(mergedNotes);
-        alert(`Đã nhập ${importedNotes.length} từ thành công!`);
-      };
-      reader.readAsText(file);
-    } else {
-      alert("Chỉ hỗ trợ file .txt hoặc .json");
+        };
+        reader.readAsText(file);
+      } else if (file.type === "text/plain" || file.name.endsWith(".txt")) {
+        reader.onload = async (event) => {
+          const lines = event.target.result.split("\n").filter(Boolean);
+          const importedNotes = [];
+  
+          lines.forEach((line) => {
+            line = line.trim();
+            if (line.includes("|")) {
+              const [word, meaning, type] = line.split("|").map(s => s.trim());
+              importedNotes.push({
+                word,
+                meaning,
+                type: type || currentTab,
+                addedDate: new Date().toISOString(),
+                userId: user?.uid // Nếu dùng auth
+              });
+            }
+          });
+  
+          const notesRef = collection(db, "notes");
+          const batch = writeBatch(db);
+  
+          importedNotes.forEach((note) => {
+            const newDocRef = doc(notesRef);
+            batch.set(newDocRef, note);
+          });
+  
+          await batch.commit();
+          setNotification(`Đã nhập ${importedNotes.length} từ thành công!`);
+          setTimeout(() => setNotification(""), 3000);
+        };
+        reader.readAsText(file);
+      } else {
+        setNotification("Chỉ hỗ trợ file .txt hoặc .json");
+        setTimeout(() => setNotification(""), 3000);
+      }
+    } catch (error) {
+      console.error("Error importing file:", error);
+      setNotification("Lỗi khi nhập file!");
+      setTimeout(() => setNotification(""), 3000);
     }
   };
 
-  // Hàm export file TXT
-  const handleExportTXT = () => {
-    const content = notes
-      .map((note) => `${note.word} | ${note.meaning} | ${note.type}`)
-      .join("\n");
-
-    const blob = new Blob([content], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "english-notes.txt";
-    link.click();
-    URL.revokeObjectURL(url);
-  };
-
-  // Hàm export file JSON
-  const handleExportJSON = () => {
-    const blob = new Blob([JSON.stringify(notes, null, 2)], {
-      type: "application/json",
-    });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "english-notes.json";
-    link.click();
-    URL.revokeObjectURL(url);
+  // Hàm export file
+  const handleExportFile = async (format) => {
+    try {
+      // Chuẩn bị nội dung file
+      const content = format === "json"
+        ? JSON.stringify(notes, null, 2)
+        : notes.map((note) => `${note.word} | ${note.meaning} | ${note.type}`).join("\n");
+      const blob = new Blob([content], { type: format === "json" ? "application/json" : "text/plain" });
+      const fileName = `english-notes-${new Date().toISOString()}.${format}`;
+      const storageRef = ref(storage, `exports/${fileName}`);
+  
+      // Upload lên Firebase Storage
+      await uploadBytes(storageRef, blob);
+      const url = await getDownloadURL(storageRef);
+  
+      // Tạo link để tải về
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+  
+      setNotification(`Đã export thành công dưới dạng ${format.toUpperCase()}!`);
+      setTimeout(() => setNotification(""), 3000);
+    } catch (error) {
+      console.error("Error exporting file:", error);
+      setNotification("Lỗi khi export file!");
+      setTimeout(() => setNotification(""), 3000);
+    }
   };
 
   //Hàm sắp xếp từ vựng A-Z
-  const handleSortAZ = () => {
-    const sortedNotes = [...notes]
-      .filter((note) => note.type === currentTab)
-      .sort((a, b) =>
-        a.word.toLowerCase().localeCompare(b.word.toLowerCase())
+  const handleSortAZ = async () => {
+    try {
+      const notesRef = collection(db, "notes");
+      const querySnapshot = await getDocs(notesRef);
+      const allNotes = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  
+      // Lọc và sắp xếp theo currentTab
+      const sortedNotes = allNotes
+        .filter((note) => note.type === currentTab)
+        .sort((a, b) => a.word.toLowerCase().localeCompare(b.word.toLowerCase()));
+  
+      // Giữ các note khác không thuộc currentTab
+      const otherNotes = allNotes.filter((note) => note.type !== currentTab);
+  
+      // Cập nhật lại Firestore với thứ tự mới
+      const updatePromises = sortedNotes.map((note) =>
+        updateDoc(doc(db, "notes", note.id), note)
       );
+      await Promise.all(updatePromises); // Đảm bảo tất cả cập nhật hoàn thành
   
-    const otherNotes = notes.filter((note) => note.type !== currentTab);
-    const reorderedNotes = [...sortedNotes, ...otherNotes];
-  
-    setNotes(reorderedNotes);
-    saveNotesToLocalStorage(reorderedNotes);
-    alert(`✅ Đã sắp xếp "${currentTab}" theo thứ tự A-Z`);
-};
-
-  // Load notes từ localStorage khi mở app
-  useEffect(() => {
-    const savedNotes = JSON.parse(localStorage.getItem("english-notes")) || [];
-    setNotes(savedNotes);
-  }, []);
-
-  // Hàm lưu ghi chú vào localStorage
-  const saveNotesToLocalStorage = (updatedNotes) => {
-    localStorage.setItem("english-notes", JSON.stringify(updatedNotes));
+      setNotification(`✅ Đã sắp xếp "${currentTab}" theo thứ tự A-Z`);
+      setTimeout(() => setNotification(""), 3000);
+    } catch (error) {
+      console.error("Error sorting notes:", error);
+      setNotification("Lỗi khi sắp xếp ghi chú!");
+      setTimeout(() => setNotification(""), 3000);
+    }
   };
 
+  // Load notes từ firebase khi mở app
+  useEffect(() => {
+      const notesRef = collection(db, "notes"); // Collection tên 'notes'
+    
+      // Real-time listener
+      const unsubscribe = onSnapshot(notesRef, (snapshot) => {
+        const loadedNotes = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+        setNotes(loadedNotes);
+      });
+    
+      return unsubscribe; // Cleanup
+    }, [user]);
+
+  
   // Hàm thêm ghi chú mới
-  const handleAddNote = () => {
+  const handleAddNote = async () => {
     if (!newWord.trim() || !newMeaning.trim()) return;
-    const newId = Date.now().toString();
-    const updatedNotes = [
-      ...notes,
-      {
-        id: newId,
+  
+    try {
+      const notesRef = collection(db, "notes");
+      await addDoc(notesRef, {
         type: currentTab,
         word: newWord,
         meaning: newMeaning,
-        exampleOrExplanation: exampleOrExplanation.trim(), // Lưu ví dụ/giải thích
+        exampleOrExplanation: exampleOrExplanation.trim(),
         addedDate: new Date().toISOString(),
-      },
-    ];
-    setNotes(updatedNotes);
-    saveNotesToLocalStorage(updatedNotes);
-    
-    // ✅ THÊM THÔNG BÁO SAU KHI LƯU
-    setNotification(`Từ "${newWord}" đã được thêm vào Note`);
-    setTimeout(() => setNotification(""), 3000); // Ẩn sau 3 giây
-    
-    setNewWord("");
-    setNewMeaning("");
-    setExampleOrExplanation(""); // Reset trường mới
+      });
+      setNotification(`Từ "${newWord}" đã được thêm`);
+      setTimeout(() => setNotification(""), 3000);
+      setNewWord("");
+      setNewMeaning("");
+      setExampleOrExplanation("");
+    } catch (error) {
+      console.error("Error adding note:", error);
+    }
   };
 
   // Hàm xóa một note
-  const handleDeleteNote = (id) => {
-    const updatedNotes = notes.filter((note) => note.id !== id);
-    setNotes(updatedNotes);
-    saveNotesToLocalStorage(updatedNotes);
-    setNotification("Đã xóa từ thành công!");
-    setTimeout(() => setNotification(""), 3000);
+  const handleDeleteNote = async (id) => {
+    try {
+      const noteRef = doc(db, "notes", id);
+      await deleteDoc(noteRef);
+      setNotification("Đã xóa từ thành công!");
+      setTimeout(() => setNotification(""), 3000);
+    } catch (error) {
+      console.error("Error deleting note:", error);
+    }
   };
   
 
   // Hàm chỉnh sửa note
-  const handleEditNote = (note) => {
-    setEditingNote({ ...note });
-    setIsEditing(true);
-
-     //TỰ ĐỘNG CUỘN LÊN ĐẦU TRANG
-    window.scrollTo({
-      top: 0,
-      behavior: 'smooth'
-    });
-    
+  const handleSaveEdit = async () => {
+    if (!editingNote) return;
+  
+    try {
+      const noteRef = doc(db, "notes", editingNote.id);
+      await updateDoc(noteRef, {
+        word: editingNote.word,
+        meaning: editingNote.meaning,
+        exampleOrExplanation: editingNote.exampleOrExplanation,
+        type: editingNote.type, // Nếu cần cập nhật type
+        addedDate: editingNote.addedDate, // Giữ nguyên hoặc cập nhật nếu cần
+      });
+  
+      setNotification(`Từ "${editingNote.word}" đã được cập nhật thành công`);
+      setTimeout(() => setNotification(""), 3000);
+  
+      // Đặt lại trạng thái sau khi lưu
+      setEditingNote(null);
+      setIsEditing(false);
+    } catch (error) {
+      console.error("Error updating note:", error);
+      setNotification("Lỗi khi cập nhật ghi chú!");
+      setTimeout(() => setNotification(""), 3000);
+    }
   };
 
   // Hàm lưu thay đổi khi chỉnh sửa
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (!editingNote) return;
-
-    const updatedNotes = notes.map((note) =>
-      note.id === editingNote.id ? editingNote : note
-    );
-    setNotes(updatedNotes);
-    saveNotesToLocalStorage(updatedNotes);
-
-    //THÊM THÔNG BÁO SAU KHI CẬP NHẬT
-    setNotification(`Từ "${editingNote.word}" đã được cập nhật thành công`);
-    setTimeout(() => setNotification(""), 3000);
-
-    // Đặt lại trạng thái sau khi lưu
-    setEditingNote(null);
-    setIsEditing(false);
+  
+    try {
+      const noteRef = doc(db, "notes", editingNote.id);
+      await updateDoc(noteRef, editingNote);
+      setNotification(`Từ "${editingNote.word}" đã được cập nhật`);
+      setTimeout(() => setNotification(""), 3000);
+      setEditingNote(null);
+      setIsEditing(false);
+    } catch (error) {
+      console.error("Error updating note:", error);
+    }
   };
 
   // Hàm xóa tất cả note
-  const handleDeleteAllNotes = () => {
-    if (window.confirm("Bạn có chắc chắn muốn xóa tất cả ghi chú?")) {
-      setNotes([]);
-      saveNotesToLocalStorage([]);
-      alert("Đã xóa toàn bộ ghi chú!");
+  const handleDeleteAllNotes = async () => {
+    if (!window.confirm("Bạn có chắc chắn muốn xóa tất cả ghi chú?")) return;
+  
+    try {
+      const notesRef = collection(db, "notes");
+      const querySnapshot = await getDocs(notesRef);
+  
+      querySnapshot.forEach(async (docSnapshot) => {
+        await deleteDoc(doc(db, "notes", docSnapshot.id));
+      });
+  
+      setNotification("Đã xóa toàn bộ ghi chú!");
+      setTimeout(() => setNotification(""), 3000);
+    } catch (error) {
+      console.error("Error deleting all notes:", error);
+      setNotification("Lỗi khi xóa tất cả ghi chú!");
+      setTimeout(() => setNotification(""), 3000);
     }
   };
 
@@ -451,13 +534,13 @@ export default function App() {
     
       <div className="flex flex-wrap gap-2">
         <button
-          onClick={handleExportTXT}
+          onClick={() => handleExportFile("txt")}
           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm"
         >
           Export .txt
         </button>
         <button
-          onClick={handleExportJSON}
+          onClick={() => handleExportFile("json")}
           className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded text-sm"
         >
           Export .json
