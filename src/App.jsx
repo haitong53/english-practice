@@ -175,6 +175,7 @@ export default function App() {
 
   // Hàm xóa một note
   const handleDeleteNote = (id) => {
+    alert("Hàm handleDeleteNote đã chạy!");
     // Tìm từ cần xóa
     const noteToDelete = notes.find(note => note.id === id);
     
