@@ -175,32 +175,27 @@ export default function App() {
 
   // Hàm xóa một note
   const handleDeleteNote = (id) => {
-    // Tìm từ cần xóa để hiển thị tên
     const noteToDelete = notes.find(note => note.id === id);
-    
-    // Nếu không tìm thấy note → dừng
     if (!noteToDelete) {
-      alert("Không tìm thấy từ để xóa!");
+      Swal.fire("Lỗi", "Không tìm thấy từ để xóa!", "error");
       return;
     }
   
-    // Hiển thị cảnh báo xác nhận
-    const isConfirmed = window.confirm(
-      `⚠️ Bạn có chắc chắn muốn xóa từ "${noteToDelete.word}" không?\n\nẤn "OK" để xác nhận hoặc "Hủy" để hủy bỏ.`
-    );
-  
-    // Nếu người dùng chọn "OK"
-    if (isConfirmed) {
-      const updatedNotes = notes.filter((note) => note.id !== id);
-      setNotes(updatedNotes);
-      saveNotesToLocalStorage(updatedNotes);
-      
-      // Thông báo xóa thành công
-      alert(`✅ Từ "${noteToDelete.word}" đã được xóa thành công!`);
-    } else {
-      // Người dùng chọn "Hủy"
-      alert("❌ Hủy thao tác xóa.");
-    }
+    Swal.fire({
+      title: "Xác nhận xóa",
+      text: `Bạn có chắc chắn muốn xóa từ "${noteToDelete.word}" không?`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Có, xóa!",
+      cancelButtonText: "Không, giữ lại"
+    }).then((result) => {
+      if (result.isConfirmed) {
+        const updatedNotes = notes.filter((note) => note.id !== id);
+        setNotes(updatedNotes);
+        saveNotesToLocalStorage(updatedNotes);
+        Swal.fire("Đã xóa!", `Từ "${noteToDelete.word}" đã được xóa.`, "success");
+      }
+    });
   };
 
   // Hàm chỉnh sửa note
