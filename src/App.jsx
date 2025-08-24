@@ -560,7 +560,7 @@ export default function App() {
         
 
       <footer className="text-center text-gray-500 text-sm mt-8">
-        &copy; 2025 Học tiếng Anh Tool. Built for self-learning.
+        &copy; This is a vocabulary app for learning English.
       </footer>
     </div>
   );
