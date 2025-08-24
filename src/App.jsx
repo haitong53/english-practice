@@ -175,21 +175,12 @@ export default function App() {
 
   // Hàm xóa một note
   const handleDeleteNote = (id) => {
-    const noteToDelete = notes.find(note => note.id === id);
-    if (!noteToDelete) return;
-  
-    // Hiển thị cảnh báo
-    const isConfirmed = window.confirm(
-      `⚠️ Bạn có chắc chắn muốn xóa từ "${noteToDelete.word}" không?`
-    );
-  
-    if (isConfirmed) {
-      const updatedNotes = notes.filter((note) => note.id !== id);
-      setNotes(updatedNotes);
-      saveNotesToLocalStorage(updatedNotes);
-      alert(`✅ Từ "${noteToDelete.word}" đã được xóa thành công!`);
-    }
+    const updatedNotes = notes.filter((note) => note.id !== id);
+    setNotes(updatedNotes);
+    saveNotesToLocalStorage(updatedNotes);
+    alert(`✅ Đã xóa từ thành công!`);
   };
+  
 
   // Hàm chỉnh sửa note
   const handleEditNote = (note) => {
@@ -535,7 +526,15 @@ export default function App() {
                     Sửa
                   </button>
                   <button
-                    onClick={() => handleDeleteNote(note.id)}
+                    onClick={() => {
+                      // 1. Hỏi người dùng
+                      const isConfirmed = window.confirm(`Bạn có chắc chắn muốn xóa từ "${note.word}" không?`);
+                      
+                      // 2. Nếu người dùng chọn "Có"
+                      if (isConfirmed) {
+                        handleDeleteNote(note.id); // Gọi hàm xóa
+                      }
+                    }}
                     className="text-sm text-red-600 hover:text-red-800 hover:underline transition-colors"
                   >
                     Xóa
