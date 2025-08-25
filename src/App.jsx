@@ -8,7 +8,8 @@ import {
   updateDoc,
   query,
   writeBatch,
-  onSnapshot
+  onSnapshot,
+  getDoc
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage } from "./firebase"; // Đường dẫn đến file firebase.js, chỉ cần db và storage
