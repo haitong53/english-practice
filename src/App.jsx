@@ -181,17 +181,23 @@ export default function App() {
   
       console.log("Sorted notes before update:", sortedNotes);
   
-      // Kiểm tra từng tài liệu trước khi cập nhật
-      const updatePromises = sortedNotes.map((note) => {
-        const updatedData = { ...note }; // Sao chép để tránh thay đổi trực tiếp
-        return updateDoc(doc(db, "notes", note.id), updatedData);
+      // Kiểm tra tồn tại của tài liệu trước khi cập nhật
+      const updatePromises = sortedNotes.map(async (note) => {
+        const noteRef = doc(db, "notes", note.id);
+        const docSnap = await getDoc(noteRef); // Kiểm tra tài liệu tồn tại
+        if (docSnap.exists()) {
+          return updateDoc(noteRef, note);
+        } else {
+          console.warn(`Document ${note.id} not found, skipping update`);
+          return Promise.resolve(); // Bỏ qua tài liệu không tồn tại
+        }
       });
       await Promise.all(updatePromises);
   
       setNotification(`✅ Đã sắp xếp "${currentTab}" theo thứ tự A-Z`);
       setTimeout(() => setNotification(""), 3000);
       } catch (error) {
-      console.error("Error sorting notes:", error); // Log lỗi chi tiết
+      console.error("Error sorting notes:", error);
       setNotification("Lỗi khi sắp xếp ghi chú! Chi tiết: " + error.message);
       setTimeout(() => setNotification(""), 3000);
       }
