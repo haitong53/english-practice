@@ -165,11 +165,11 @@ export default function App() {
   };
 
   // Hàm sắp xếp từ vựng A-Z
-    const handleSortAZ = async () => {
+  const handleSortAZ = async () => {
     try {
       const notesRef = collection(db, "notes");
       const querySnapshot = await getDocs(notesRef);
-      const allNotes = querySnapshot.docs
+      let allNotes = querySnapshot.docs
         .map((doc) => ({ id: doc.id, ...doc.data() }))
         .filter((note) => note.word && note.type); // Loại bỏ notes thiếu word hoặc type
   
@@ -182,29 +182,34 @@ export default function App() {
       );
       const otherNotes = allNotes.filter((note) => note.type !== currentTab);
   
-      console.log("Sorted notes before update:", sortedNotes);
+      console.log("Sorted notes before verification:", sortedNotes);
   
-      // Sử dụng writeBatch và kiểm tra tồn tại
+      // Xác minh tồn tại và chuẩn bị batch
       const batch = writeBatch(db);
-      let updatedCount = 0;
-  
+      let validNotes = [];
       for (const note of sortedNotes) {
         const noteRef = doc(db, "notes", note.id);
-        const docSnap = await getDoc(noteRef); // Kiểm tra tồn tại
+        const docSnap = await getDoc(noteRef);
         if (docSnap.exists()) {
           batch.update(noteRef, note);
-          updatedCount++;
+          validNotes.push(note);
         } else {
           console.warn(`Document ${note.id} not found, skipping update`);
         }
       }
   
+      // Commit batch nếu có tài liệu hợp lệ
+      let updatedCount = validNotes.length;
       if (updatedCount > 0) {
         await batch.commit();
         console.log(`Successfully updated ${updatedCount} documents`);
       } else {
         console.log("No valid documents to update");
       }
+  
+      // Cập nhật state để sắp xếp trên UI ngay cả khi không commit
+      const updatedNotes = [...validNotes, ...otherNotes];
+      setNotes(updatedNotes); // Cập nhật giao diện với thứ tự mới
   
       setNotification(
         updatedCount > 0
