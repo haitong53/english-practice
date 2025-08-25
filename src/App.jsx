@@ -165,28 +165,36 @@ export default function App() {
 
   // Hàm sắp xếp từ vựng A-Z
   const handleSortAZ = async () => {
-    try {
+      try {
       const notesRef = collection(db, "notes");
       const querySnapshot = await getDocs(notesRef);
-      const allNotes = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-
+      const allNotes = querySnapshot.docs
+        .map((doc) => ({ id: doc.id, ...doc.data() }))
+        .filter((note) => note.word && note.type); // Loại bỏ notes thiếu word hoặc type
+  
+      console.log("All notes fetched:", allNotes);
+  
       const sortedNotes = allNotes
         .filter((note) => note.type === currentTab)
         .sort((a, b) => a.word.toLowerCase().localeCompare(b.word.toLowerCase()));
       const otherNotes = allNotes.filter((note) => note.type !== currentTab);
-
-      const updatePromises = sortedNotes.map((note) =>
-        updateDoc(doc(db, "notes", note.id), note)
-      );
+  
+      console.log("Sorted notes before update:", sortedNotes);
+  
+      // Kiểm tra từng tài liệu trước khi cập nhật
+      const updatePromises = sortedNotes.map((note) => {
+        const updatedData = { ...note }; // Sao chép để tránh thay đổi trực tiếp
+        return updateDoc(doc(db, "notes", note.id), updatedData);
+      });
       await Promise.all(updatePromises);
-
+  
       setNotification(`✅ Đã sắp xếp "${currentTab}" theo thứ tự A-Z`);
       setTimeout(() => setNotification(""), 3000);
-    } catch (error) {
-      console.error("Error sorting notes:", error);
-      setNotification("Lỗi khi sắp xếp ghi chú!");
+      } catch (error) {
+      console.error("Error sorting notes:", error); // Log lỗi chi tiết
+      setNotification("Lỗi khi sắp xếp ghi chú! Chi tiết: " + error.message);
       setTimeout(() => setNotification(""), 3000);
-    }
+      }
   };
 
   // Hàm export file dạng .txt
