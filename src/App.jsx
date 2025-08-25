@@ -164,43 +164,59 @@ export default function App() {
   };
 
   // Hàm sắp xếp từ vựng A-Z
-   const handleSortAZ = async () => {
-      try {
-        const notesRef = collection(db, "notes");
-        const querySnapshot = await getDocs(notesRef);
-        const allNotes = querySnapshot.docs
-          .map((doc) => ({ id: doc.id, ...doc.data() }))
-          .filter((note) => note.word && note.type); // Loại bỏ notes thiếu word hoặc type
-    
-        console.log("All notes fetched:", allNotes);
-    
-        // Lọc và sắp xếp chỉ các note thuộc currentTab
-        const notesToSort = allNotes.filter((note) => note.type === currentTab);
-        const sortedNotes = [...notesToSort].sort((a, b) =>
-          a.word.toLowerCase().localeCompare(b.word.toLowerCase())
-        );
-        const otherNotes = allNotes.filter((note) => note.type !== currentTab);
-    
-        console.log("Sorted notes:", sortedNotes);
-    
-        // Sử dụng writeBatch để cập nhật
-        const batch = writeBatch(db);
-        sortedNotes.forEach((note) => {
-          const noteRef = doc(db, "notes", note.id);
-          batch.update(noteRef, note); // Cập nhật từng note
-        });
-    
-        // Commit batch
-        await batch.commit();
-    
-        setNotification(`✅ Đã sắp xếp "${currentTab}" theo thứ tự A-Z`);
-        setTimeout(() => setNotification(""), 3000);
-      } catch (error) {
-        console.error("Error sorting notes:", error);
-        setNotification("Lỗi khi sắp xếp ghi chú! Chi tiết: " + error.message);
-        setTimeout(() => setNotification(""), 3000);
+    const handleSortAZ = async () => {
+    try {
+      const notesRef = collection(db, "notes");
+      const querySnapshot = await getDocs(notesRef);
+      const allNotes = querySnapshot.docs
+        .map((doc) => ({ id: doc.id, ...doc.data() }))
+        .filter((note) => note.word && note.type); // Loại bỏ notes thiếu word hoặc type
+  
+      console.log("All notes fetched:", allNotes);
+  
+      // Lọc và sắp xếp chỉ các note thuộc currentTab
+      const notesToSort = allNotes.filter((note) => note.type === currentTab);
+      const sortedNotes = [...notesToSort].sort((a, b) =>
+        a.word.toLowerCase().localeCompare(b.word.toLowerCase())
+      );
+      const otherNotes = allNotes.filter((note) => note.type !== currentTab);
+  
+      console.log("Sorted notes before update:", sortedNotes);
+  
+      // Sử dụng writeBatch và kiểm tra tồn tại
+      const batch = writeBatch(db);
+      let updatedCount = 0;
+  
+      for (const note of sortedNotes) {
+        const noteRef = doc(db, "notes", note.id);
+        const docSnap = await getDoc(noteRef); // Kiểm tra tồn tại
+        if (docSnap.exists()) {
+          batch.update(noteRef, note);
+          updatedCount++;
+        } else {
+          console.warn(`Document ${note.id} not found, skipping update`);
+        }
       }
-    };
+  
+      if (updatedCount > 0) {
+        await batch.commit();
+        console.log(`Successfully updated ${updatedCount} documents`);
+      } else {
+        console.log("No valid documents to update");
+      }
+  
+      setNotification(
+        updatedCount > 0
+          ? `✅ Đã sắp xếp "${currentTab}" theo thứ tự A-Z`
+          : `⚠️ Không có tài liệu nào để sắp xếp trong "${currentTab}"`
+      );
+      setTimeout(() => setNotification(""), 3000);
+    } catch (error) {
+      console.error("Error sorting notes:", error);
+      setNotification("Lỗi khi sắp xếp ghi chú! Chi tiết: " + error.message);
+      setTimeout(() => setNotification(""), 3000);
+    }
+  };
 
   // Hàm export file dạng .txt
   const handleExportTXT = async () => {
