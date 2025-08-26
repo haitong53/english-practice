@@ -54,11 +54,19 @@ export default function App() {
   // Load notes khi mount
   useEffect(() => {
     const notesRef = collection(db, "notes");
-    const unsubscribe = onSnapshot(notesRef, (snapshot) => {
-      const loadedNotes = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      setNotes(loadedNotes);
+    const unsubscribe = onSnapshot(notesRef, async (snapshot) => {
+      const loadedDocs = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      // Kiểm tra tồn tại của từng tài liệu
+      const validNotes = await Promise.all(
+        loadedDocs.map(async (note) => {
+          const noteRef = doc(db, "notes", note.id);
+          const docSnap = await getDoc(noteRef);
+          return docSnap.exists() ? note : null;
+        })
+      ).then((results) => results.filter((note) => note !== null));
+      setNotes(validNotes); // Chỉ set các note hợp lệ
     });
-
+  
     return unsubscribe;
   }, []);
 
@@ -112,26 +120,28 @@ export default function App() {
     }
   };
 
- // Hàm chỉnh sửa note
-  const handleEditNote = async (note) => {
-    try {
-      const noteRef = doc(db, "notes", note.id);
-      const docSnap = await getDoc(noteRef); // Kiểm tra tồn tại trước
-      if (docSnap.exists()) {
-        setEditingNote({ ...note });
-        setIsEditing(true);
-        window.scrollTo({ top: 0, behavior: "smooth" });
-      } else {
-        setNotification("Lỗi: Tài liệu không tồn tại trong Firestore!");
+  // Hàm chỉnh sửa note
+    const handleEditNote = async (note) => {
+      try {
+        const noteRef = doc(db, "notes", note.id);
+        const docSnap = await getDoc(noteRef); // Kiểm tra tồn tại trước
+        if (docSnap.exists()) {
+          setEditingNote({ ...note });
+          setIsEditing(true);
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        } else {
+          // Loại bỏ note không tồn tại khỏi state và thông báo
+          setNotes((prevNotes) => prevNotes.filter((n) => n.id !== note.id));
+          setNotification(`Lỗi: Tài liệu "${note.word}" (ID: ${note.id}) không tồn tại trong Firestore! Đã xóa khỏi danh sách.`);
+          setTimeout(() => setNotification(""), 3000);
+          console.warn(`Document ${note.id} not found when editing, removed from state`);
+        }
+      } catch (error) {
+        console.error("Error checking document:", error.message);
+        setNotification("Lỗi khi kiểm tra tài liệu! Chi tiết: " + error.message);
         setTimeout(() => setNotification(""), 3000);
-        console.warn(`Document ${note.id} not found when editing`);
       }
-    } catch (error) {
-      console.error("Error checking document:", error);
-      setNotification("Lỗi khi kiểm tra tài liệu! Chi tiết: " + error.message);
-      setTimeout(() => setNotification(""), 3000);
-    }
-  };
+    };
 
  // Hàm lưu thay đổi khi chỉnh sửa
   const handleSaveEdit = async () => {
