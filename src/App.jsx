@@ -120,33 +120,41 @@ export default function App() {
   };
 
   // Hàm lưu thay đổi khi chỉnh sửa
-  const handleSaveEdit = async () => {
-    if (!editingNote) return;
-  
-    try {
-      const noteRef = doc(db, "notes", editingNote.id);
-      const docSnap = await getDoc(noteRef); // Kiểm tra tồn tại
-      if (docSnap.exists()) {
-        await updateDoc(noteRef, {
-          word: editingNote.word,
-          meaning: editingNote.meaning,
-          exampleOrExplanation: editingNote.exampleOrExplanation,
-          type: editingNote.type,
-          addedDate: editingNote.addedDate
-        });
-        setNotification(`Từ "${editingNote.word}" đã được cập nhật thành công`);
-      } else {
-        setNotification("Lỗi: Tài liệu không tồn tại!");
+    const handleSaveEdit = async () => {
+      if (!editingNote) return;
+    
+      try {
+        const noteRef = doc(db, "notes", editingNote.id);
+        const docSnap = await getDoc(noteRef); // Kiểm tra tồn tại
+    
+        if (docSnap.exists()) {
+          await updateDoc(noteRef, {
+            word: editingNote.word,
+            meaning: editingNote.meaning,
+            exampleOrExplanation: editingNote.exampleOrExplanation,
+            type: editingNote.type,
+            addedDate: editingNote.addedDate
+          });
+    
+          // Cập nhật state notes thủ công để UI phản ánh ngay
+          const updatedNotes = notes.map((note) =>
+            note.id === editingNote.id ? { ...note, ...editingNote } : note
+          );
+          setNotes(updatedNotes);
+    
+          setNotification(`Từ "${editingNote.word}" đã được cập nhật thành công`);
+        } else {
+          setNotification("Lỗi: Tài liệu không tồn tại trong Firestore!");
+        }
+        setTimeout(() => setNotification(""), 3000);
+        setEditingNote(null);
+        setIsEditing(false);
+      } catch (error) {
+        console.error("Error updating note:", error.message); // Log chi tiết hơn
+        setNotification("Lỗi khi cập nhật ghi chú! Chi tiết: " + error.message);
+        setTimeout(() => setNotification(""), 3000);
       }
-      setTimeout(() => setNotification(""), 3000);
-      setEditingNote(null);
-      setIsEditing(false);
-    } catch (error) {
-      console.error("Error updating note:", error);
-      setNotification("Lỗi khi cập nhật ghi chú! Chi tiết: " + error.message);
-      setTimeout(() => setNotification(""), 3000);
-    }
-  };
+    };
 
   // Hàm xóa tất cả note
   const handleDeleteAllNotes = async () => {
