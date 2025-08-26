@@ -53,13 +53,13 @@ export default function App() {
 
   // Load notes khi mount
   useEffect(() => {
-    const notesRef = collection(db, "notes");
+    const notesRef = collection(db, "test");
     const unsubscribe = onSnapshot(notesRef, async (snapshot) => {
       const loadedDocs = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
       // Kiểm tra tồn tại của từng tài liệu
       const validNotes = await Promise.all(
         loadedDocs.map(async (note) => {
-          const noteRef = doc(db, "notes", note.id);
+          const noteRef = doc(db, "test", note.id);
           const docSnap = await getDoc(noteRef);
           return docSnap.exists() ? note : null;
         })
@@ -90,7 +90,7 @@ export default function App() {
     if (!newWord.trim() || !newMeaning.trim()) return;
 
     try {
-      const notesRef = collection(db, "notes");
+      const notesRef = collection(db, "test");
       await addDoc(notesRef, {
         type: currentTab,
         word: newWord,
@@ -111,7 +111,7 @@ export default function App() {
   // Hàm xóa một note
   const handleDeleteNote = async (id) => {
     try {
-      const noteRef = doc(db, "notes", id);
+      const noteRef = doc(db, "test", id);
       await deleteDoc(noteRef);
       setNotification("Đã xóa từ thành công!");
       setTimeout(() => setNotification(""), 3000);
@@ -123,7 +123,7 @@ export default function App() {
   // Hàm chỉnh sửa note
     const handleEditNote = async (note) => {
       try {
-        const noteRef = doc(db, "notes", note.id);
+        const noteRef = doc(db, "test", note.id);
         const docSnap = await getDoc(noteRef); // Kiểm tra tồn tại trước
         if (docSnap.exists()) {
           setEditingNote({ ...note });
@@ -148,7 +148,7 @@ export default function App() {
     if (!editingNote) return;
   
     try {
-      const noteRef = doc(db, "notes", editingNote.id);
+      const noteRef = doc(db, "test", editingNote.id);
       const docSnap = await getDoc(noteRef); // Kiểm tra tồn tại
   
       if (docSnap.exists()) {
@@ -161,7 +161,7 @@ export default function App() {
         });
   
         // Cập nhật state notes thủ công để UI phản ánh ngay
-        const updatedNotes = notes.map((note) =>
+        const updatedNotes = test.map((note) =>
           note.id === editingNote.id ? { ...note, ...editingNote } : note
         );
         setNotes(updatedNotes);
@@ -185,12 +185,12 @@ export default function App() {
     if (!window.confirm("Bạn có chắc chắn muốn xóa tất cả ghi chú?")) return;
   
     try {
-      const notesRef = collection(db, "notes");
+      const notesRef = collection(db, "test");
       const querySnapshot = await getDocs(notesRef);
       const batch = writeBatch(db);
   
       querySnapshot.forEach((docSnapshot) => {
-        batch.delete(doc(db, "notes", docSnapshot.id));
+        batch.delete(doc(db, "test", docSnapshot.id));
       });
   
       await batch.commit();
@@ -207,7 +207,7 @@ export default function App() {
     const handleSortAZ = async () => {
       try {
         // Lấy dữ liệu từ Firestore
-        const notesRef = collection(db, "notes");
+        const notesRef = collection(db, "test");
         const querySnapshot = await getDocs(notesRef);
         const allNotes = querySnapshot.docs
           .map((doc) => ({ id: doc.id, ...doc.data() }))
@@ -228,7 +228,7 @@ export default function App() {
         const batch = writeBatch(db);
         let updatedCount = 0;
         for (const note of sortedNotes) {
-          const noteRef = doc(db, "notes", note.id);
+          const noteRef = doc(db, "test", note.id);
           const docSnap = await getDoc(noteRef);
           if (docSnap.exists()) {
             batch.update(noteRef, note);
@@ -257,7 +257,7 @@ export default function App() {
   // Hàm export file dạng .txt
   const handleExportTXT = async () => {
     try {
-      const content = notes
+      const content = test
         .map((note) => `${note.word} | ${note.meaning} | ${note.type}`)
         .join("\n");
       const blob = new Blob([content], { type: "text/plain" });
@@ -295,7 +295,7 @@ export default function App() {
         reader.onload = async (event) => {
           try {
             const importedNotes = JSON.parse(event.target.result);
-            const notesRef = collection(db, "notes");
+            const notesRef = collection(db, "test");
             const batch = writeBatch(db);
 
             importedNotes.forEach((note) => {
@@ -333,7 +333,7 @@ export default function App() {
             }
           });
 
-          const notesRef = collection(db, "notes");
+          const notesRef = collection(db, "test");
           const batch = writeBatch(db);
 
           importedNotes.forEach((note) => {
@@ -358,7 +358,7 @@ export default function App() {
   };
 
   // Lọc theo tab và từ khóa tìm kiếm
-  const filteredNotes = notes
+  const filteredNotes = test
     .filter((note) => note.type === currentTab)
     .filter((note) => {
       const noteContent = `${note.word} ${note.meaning}`.toLowerCase();
