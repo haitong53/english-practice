@@ -122,23 +122,28 @@ export default function App() {
   // Hàm lưu thay đổi khi chỉnh sửa
   const handleSaveEdit = async () => {
     if (!editingNote) return;
-
+  
     try {
       const noteRef = doc(db, "notes", editingNote.id);
-      await updateDoc(noteRef, {
-        word: editingNote.word,
-        meaning: editingNote.meaning,
-        exampleOrExplanation: editingNote.exampleOrExplanation,
-        type: editingNote.type,
-        addedDate: editingNote.addedDate
-      });
-      setNotification(`Từ "${editingNote.word}" đã được cập nhật thành công`);
+      const docSnap = await getDoc(noteRef); // Kiểm tra tồn tại
+      if (docSnap.exists()) {
+        await updateDoc(noteRef, {
+          word: editingNote.word,
+          meaning: editingNote.meaning,
+          exampleOrExplanation: editingNote.exampleOrExplanation,
+          type: editingNote.type,
+          addedDate: editingNote.addedDate
+        });
+        setNotification(`Từ "${editingNote.word}" đã được cập nhật thành công`);
+      } else {
+        setNotification("Lỗi: Tài liệu không tồn tại!");
+      }
       setTimeout(() => setNotification(""), 3000);
       setEditingNote(null);
       setIsEditing(false);
     } catch (error) {
       console.error("Error updating note:", error);
-      setNotification("Lỗi khi cập nhật ghi chú!");
+      setNotification("Lỗi khi cập nhật ghi chú! Chi tiết: " + error.message);
       setTimeout(() => setNotification(""), 3000);
     }
   };
@@ -146,83 +151,76 @@ export default function App() {
   // Hàm xóa tất cả note
   const handleDeleteAllNotes = async () => {
     if (!window.confirm("Bạn có chắc chắn muốn xóa tất cả ghi chú?")) return;
-
+  
     try {
       const notesRef = collection(db, "notes");
       const querySnapshot = await getDocs(notesRef);
-
-      querySnapshot.forEach(async (docSnapshot) => {
-        await deleteDoc(doc(db, "notes", docSnapshot.id));
+      const batch = writeBatch(db);
+  
+      querySnapshot.forEach((docSnapshot) => {
+        batch.delete(doc(db, "notes", docSnapshot.id));
       });
-
+  
+      await batch.commit();
       setNotification("Đã xóa toàn bộ ghi chú!");
       setTimeout(() => setNotification(""), 3000);
     } catch (error) {
       console.error("Error deleting all notes:", error);
-      setNotification("Lỗi khi xóa tất cả ghi chú!");
+      setNotification("Lỗi khi xóa tất cả ghi chú! Chi tiết: " + error.message);
       setTimeout(() => setNotification(""), 3000);
     }
   };
 
   // Hàm sắp xếp từ vựng A-Z
-  const handleSortAZ = async () => {
-    try {
-      const notesRef = collection(db, "notes");
-      const querySnapshot = await getDocs(notesRef);
-      let allNotes = querySnapshot.docs
-        .map((doc) => ({ id: doc.id, ...doc.data() }))
-        .filter((note) => note.word && note.type); // Loại bỏ notes thiếu word hoặc type
-  
-      console.log("All notes fetched:", allNotes);
-  
-      // Lọc và sắp xếp chỉ các note thuộc currentTab
-      const notesToSort = allNotes.filter((note) => note.type === currentTab);
-      const sortedNotes = [...notesToSort].sort((a, b) =>
-        a.word.toLowerCase().localeCompare(b.word.toLowerCase())
-      );
-      const otherNotes = allNotes.filter((note) => note.type !== currentTab);
-  
-      console.log("Sorted notes before verification:", sortedNotes);
-  
-      // Xác minh tồn tại và chuẩn bị batch
-      const batch = writeBatch(db);
-      let validNotes = [];
-      for (const note of sortedNotes) {
-        const noteRef = doc(db, "notes", note.id);
-        const docSnap = await getDoc(noteRef);
-        if (docSnap.exists()) {
-          batch.update(noteRef, note);
-          validNotes.push(note);
-        } else {
-          console.warn(`Document ${note.id} not found, skipping update`);
+    const handleSortAZ = async () => {
+      try {
+        // Lấy dữ liệu từ Firestore
+        const notesRef = collection(db, "notes");
+        const querySnapshot = await getDocs(notesRef);
+        const allNotes = querySnapshot.docs
+          .map((doc) => ({ id: doc.id, ...doc.data() }))
+          .filter((note) => note.word && note.type); // Loại bỏ notes thiếu field
+    
+        console.log("All notes fetched:", allNotes);
+    
+        // Sắp xếp client-side để UI thay đổi ngay
+        const notesToSort = allNotes.filter((note) => note.type === currentTab);
+        const sortedNotes = [...notesToSort].sort((a, b) =>
+          a.word.toLowerCase().localeCompare(b.word.toLowerCase())
+        );
+        const otherNotes = allNotes.filter((note) => note.type !== currentTab);
+        const updatedNotes = [...sortedNotes, ...otherNotes];
+        setNotes(updatedNotes); // Cập nhật state để UI phản ánh
+    
+        // Đồng bộ với Firestore (bỏ qua nếu không tồn tại)
+        const batch = writeBatch(db);
+        let updatedCount = 0;
+        for (const note of sortedNotes) {
+          const noteRef = doc(db, "notes", note.id);
+          const docSnap = await getDoc(noteRef);
+          if (docSnap.exists()) {
+            batch.update(noteRef, note);
+            updatedCount++;
+          } else {
+            console.warn(`Document ${note.id} not found, skipping update`);
+          }
         }
+    
+        if (updatedCount > 0) {
+          await batch.commit();
+          console.log(`Updated ${updatedCount} documents in Firestore`);
+        } else {
+          console.log("No valid documents to update in Firestore");
+        }
+    
+        setNotification(`✅ Đã sắp xếp "${currentTab}" theo thứ tự A-Z`);
+        setTimeout(() => setNotification(""), 3000);
+      } catch (error) {
+        console.error("Error sorting notes:", error);
+        setNotification("Lỗi khi sắp xếp ghi chú! Chi tiết: " + error.message);
+        setTimeout(() => setNotification(""), 3000);
       }
-  
-      // Commit batch nếu có tài liệu hợp lệ
-      let updatedCount = validNotes.length;
-      if (updatedCount > 0) {
-        await batch.commit();
-        console.log(`Successfully updated ${updatedCount} documents`);
-      } else {
-        console.log("No valid documents to update");
-      }
-  
-      // Cập nhật state để sắp xếp trên UI ngay cả khi không commit
-      const updatedNotes = [...validNotes, ...otherNotes];
-      setNotes(updatedNotes); // Cập nhật giao diện với thứ tự mới
-  
-      setNotification(
-        updatedCount > 0
-          ? `✅ Đã sắp xếp "${currentTab}" theo thứ tự A-Z`
-          : `⚠️ Không có tài liệu nào để sắp xếp trong "${currentTab}"`
-      );
-      setTimeout(() => setNotification(""), 3000);
-    } catch (error) {
-      console.error("Error sorting notes:", error);
-      setNotification("Lỗi khi sắp xếp ghi chú! Chi tiết: " + error.message);
-      setTimeout(() => setNotification(""), 3000);
-    }
-  };
+    };
 
   // Hàm export file dạng .txt
   const handleExportTXT = async () => {
