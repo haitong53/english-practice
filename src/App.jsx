@@ -180,126 +180,134 @@ export default function App() {
   };
 
   // Hàm sắp xếp từ vựng A-Z
-  const handleSortAZ = async () => {
-    try {
-      const notesRef = collection(db, "test");
-      const querySnapshot = await getDocs(notesRef);
-      const allNotes = querySnapshot.docs
-        .map((doc) => ({ id: doc.id, ...doc.data() }))
-        .filter((note) => note.word && note.type);
-
-      console.log("All notes fetched:", allNotes);
-
-      const notesToSort = allNotes
-        .filter((note) => note.type === currentTab)
-        .sort((a, b) => a.word.toLowerCase().localeCompare(b.word.toLowerCase()));
-      const otherNotes = allNotes.filter((note) => note.type !== currentTab);
-
-      const batch = writeBatch(db);
-      let updatedCount = 0;
-      for (const note of notesToSort) {
-        const noteRef = doc(db, "test", note.id);
-        const docSnap = await getDoc(noteRef);
-        if (docSnap.exists()) {
-          batch.update(noteRef, note);
-          updatedCount++;
-        } else {
-          console.warn(`Document ${note.id} not found, skipping update`);
-        }
-      }
-
-      if (updatedCount > 0) {
-        await batch.commit();
-        console.log(`Successfully updated ${updatedCount} documents`);
-      } else {
-        console.log("No valid documents to update");
-      }
-
-      // Cập nhật state với thứ tự mới
-      setNotes([...notesToSort, ...otherNotes]);
-
-      setNotification(`✅ Đã sắp xếp "${currentTab}" theo thứ tự A-Z`);
-      setTimeout(() => setNotification(""), 3000);
-    } catch (error) {
-      console.error("Error sorting notes:", error);
-      setNotification("Lỗi khi sắp xếp ghi chú! Chi tiết: " + error.message);
-      setTimeout(() => setNotification(""), 3000);
-    }
-  };
-
-  // Hàm import file
-  const handleImportFile = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    try {
-      const reader = new FileReader();
-
-      if (file.type === "application/json" || file.name.endsWith(".json")) {
-        reader.onload = async (event) => {
-          try {
-            const importedNotes = JSON.parse(event.target.result);
-            const notesRef = collection(db, "test");
-            const batch = writeBatch(db);
-
-            importedNotes.forEach((note) => {
-              const newDocRef = doc(notesRef);
-              batch.set(newDocRef, {
-                ...note,
-                addedDate: new Date().toISOString()
-              });
-            });
-
-            await batch.commit();
-            setNotification("Đã nhập dữ liệu từ file JSON thành công!");
-            setTimeout(() => setNotification(""), 3000);
-          } catch (error) {
-            setNotification("Lỗi: File JSON không hợp lệ.");
-            setTimeout(() => setNotification(""), 3000);
+    const handleSortAZ = async () => {
+      try {
+        const notesRef = collection(db, "test");
+        const querySnapshot = await getDocs(notesRef);
+        const allNotes = querySnapshot.docs
+          .map((doc) => ({ id: doc.id, ...doc.data() }))
+          .filter((note) => note.word && note.type);
+    
+        console.log("All notes fetched:", allNotes);
+    
+        // Lọc và sắp xếp các note thuộc currentTab
+        const notesToSort = allNotes.filter((note) => note.type === currentTab);
+        const sortedNotes = [...notesToSort].sort((a, b) =>
+          a.word.toLowerCase().localeCompare(b.word.toLowerCase())
+        );
+    
+        // Lấy các note không thuộc currentTab để giữ nguyên thứ tự
+        const otherNotes = allNotes.filter((note) => note.type !== currentTab);
+    
+        // Cập nhật state ngay lập tức với thứ tự mới
+        setNotes([...sortedNotes, ...otherNotes]);
+    
+        // Chuẩn bị batch update
+        const batch = writeBatch(db);
+        let updatedCount = 0;
+    
+        // Chỉ update các note đã sắp xếp thuộc currentTab
+        for (const note of sortedNotes) {
+          const noteRef = doc(db, "test", note.id);
+          const docSnap = await getDoc(noteRef);
+          if (docSnap.exists()) {
+            batch.update(noteRef, note); // Cập nhật toàn bộ tài liệu
+            updatedCount++;
+          } else {
+            console.warn(`Document ${note.id} not found, skipping update`);
           }
-        };
-        reader.readAsText(file);
-      } else if (file.type === "text/plain" || file.name.endsWith(".txt")) {
-        reader.onload = async (event) => {
-          const lines = event.target.result.split("\n").filter(Boolean);
-          const importedNotes = [];
-
-          lines.forEach((line) => {
-            line = line.trim();
-            if (line.includes("|")) {
-              const [word, meaning, type] = line.split("|").map(s => s.trim());
-              importedNotes.push({
-                word,
-                meaning,
-                type: type || currentTab,
-                addedDate: new Date().toISOString()
-              });
-            }
-          });
-
-          const notesRef = collection(db, "test");
-          const batch = writeBatch(db);
-
-          importedNotes.forEach((note) => {
-            const newDocRef = doc(notesRef);
-            batch.set(newDocRef, note);
-          });
-
+        }
+    
+        // Commit batch nếu có thay đổi
+        if (updatedCount > 0) {
           await batch.commit();
-          setNotification(`Đã nhập ${importedNotes.length} từ thành công!`);
-          setTimeout(() => setNotification(""), 3000);
-        };
-        reader.readAsText(file);
-      } else {
-        setNotification("Chỉ hỗ trợ file .txt hoặc .json");
+          console.log(`Successfully updated ${updatedCount} documents in Firestore`);
+        } else {
+          console.log("No valid documents to update in Firestore");
+        }
+    
+        setNotification(`✅ Đã sắp xếp "${currentTab}" theo thứ tự A-Z`);
+        setTimeout(() => setNotification(""), 3000);
+      } catch (error) {
+        console.error("Error sorting notes:", error);
+        setNotification("Lỗi khi sắp xếp ghi chú! Chi tiết: " + error.message);
         setTimeout(() => setNotification(""), 3000);
       }
-    } catch (error) {
-      console.error("Error importing file:", error);
-      setNotification("Lỗi khi nhập file! Chi tiết: " + error.message);
-      setTimeout(() => setNotification(""), 3000);
-    }
-  };
+    };
+    
+      // Hàm import file
+      const handleImportFile = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+    
+        try {
+          const reader = new FileReader();
+    
+          if (file.type === "application/json" || file.name.endsWith(".json")) {
+            reader.onload = async (event) => {
+              try {
+                const importedNotes = JSON.parse(event.target.result);
+                const notesRef = collection(db, "test");
+                const batch = writeBatch(db);
+    
+                importedNotes.forEach((note) => {
+                  const newDocRef = doc(notesRef);
+                  batch.set(newDocRef, {
+                    ...note,
+                    addedDate: new Date().toISOString()
+                  });
+                });
+    
+                await batch.commit();
+                setNotification("Đã nhập dữ liệu từ file JSON thành công!");
+                setTimeout(() => setNotification(""), 3000);
+              } catch (error) {
+                setNotification("Lỗi: File JSON không hợp lệ.");
+                setTimeout(() => setNotification(""), 3000);
+              }
+            };
+            reader.readAsText(file);
+          } else if (file.type === "text/plain" || file.name.endsWith(".txt")) {
+            reader.onload = async (event) => {
+              const lines = event.target.result.split("\n").filter(Boolean);
+              const importedNotes = [];
+    
+              lines.forEach((line) => {
+                line = line.trim();
+                if (line.includes("|")) {
+                  const [word, meaning, type] = line.split("|").map(s => s.trim());
+                  importedNotes.push({
+                    word,
+                    meaning,
+                    type: type || currentTab,
+                    addedDate: new Date().toISOString()
+                  });
+                }
+              });
+    
+              const notesRef = collection(db, "test");
+              const batch = writeBatch(db);
+    
+              importedNotes.forEach((note) => {
+                const newDocRef = doc(notesRef);
+                batch.set(newDocRef, note);
+              });
+    
+              await batch.commit();
+              setNotification(`Đã nhập ${importedNotes.length} từ thành công!`);
+              setTimeout(() => setNotification(""), 3000);
+            };
+            reader.readAsText(file);
+          } else {
+            setNotification("Chỉ hỗ trợ file .txt hoặc .json");
+            setTimeout(() => setNotification(""), 3000);
+          }
+        } catch (error) {
+          console.error("Error importing file:", error);
+          setNotification("Lỗi khi nhập file! Chi tiết: " + error.message);
+          setTimeout(() => setNotification(""), 3000);
+        }
+      };
 
   // Hàm export file .txt
   const handleExportTXT = async () => {
