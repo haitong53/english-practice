@@ -48,6 +48,8 @@ export default function App() {
   const [isEditing, setIsEditing] = useState(false);
   const [notification, setNotification] = useState("");
   const [exampleOrExplanation, setExampleOrExplanation] = useState("");
+  const [structure, setStructure] = useState(""); // Field mới cho công thức ngữ pháp
+  const [examples, setExamples] = useState(""); // Field mới cho ví dụ câu
   const [translateInput, setTranslateInput] = useState("");
   const [translateResult, setTranslateResult] = useState("");
 
@@ -79,22 +81,36 @@ export default function App() {
 
   // Hàm thêm ghi chú mới
   const handleAddNote = async () => {
-    if (!newWord.trim() || !newMeaning.trim()) return;
+    if ((!newWord.trim() && currentTab !== "ngữ pháp") || !newMeaning.trim()) return;
 
     try {
       const notesRef = collection(db, "test");
-      await addDoc(notesRef, {
+      const noteData = {
         type: currentTab,
-        word: newWord,
-        meaning: newMeaning,
-        exampleOrExplanation: exampleOrExplanation.trim(),
-        addedDate: new Date().toISOString()
-      });
-      setNotification(`Từ "${newWord}" đã được thêm vào Note`);
+        addedDate: new Date().toISOString(),
+      };
+
+      if (currentTab === "ngữ pháp") {
+        if (!structure.trim()) return; // Yêu cầu structure cho ngữ pháp
+        noteData.structure = structure.trim();
+        noteData.explanation = newMeaning.trim();
+        noteData.examples = examples.trim().split("\n").filter((ex) => ex.trim()); // Chuyển dòng thành array
+      } else {
+        noteData.word = newWord.trim();
+        noteData.meaning = newMeaning.trim();
+        noteData.exampleOrExplanation = exampleOrExplanation.trim() || undefined;
+      }
+
+      await addDoc(notesRef, noteData);
+      setNotification(
+        `${currentTab === "ngữ pháp" ? "Quy tắc" : "Từ"} "${newWord || structure}" đã được thêm vào Note`
+      );
       setTimeout(() => setNotification(""), 3000);
       setNewWord("");
       setNewMeaning("");
       setExampleOrExplanation("");
+      setStructure("");
+      setExamples("");
     } catch (error) {
       console.error("Error adding note:", error);
     }
@@ -113,50 +129,77 @@ export default function App() {
   };
 
   // Hàm chỉnh sửa note
-  const handleEditNote = (note) => {
-    setEditingNote({ ...note });
-    setIsEditing(true);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+  const handleEditNote = async (note) => {
+    try {
+      const noteRef = doc(db, "test", note.id);
+      const docSnap = await getDoc(noteRef);
+      if (docSnap.exists()) {
+        setEditingNote({ ...note });
+        setIsEditing(true);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      } else {
+        setNotes((prevNotes) => prevNotes.filter((n) => n.id !== note.id));
+        setNotification(`Lỗi: Tài liệu "${note.word || note.structure}" (ID: ${note.id}) không tồn tại trong Firestore! Đã xóa khỏi danh sách.`);
+        setTimeout(() => setNotification(""), 3000);
+        console.warn(`Document ${note.id} not found when editing, removed from state`);
+      }
+    } catch (error) {
+      console.error("Error checking document:", error.message);
+      setNotification("Lỗi khi kiểm tra tài liệu! Chi tiết: " + error.message);
+      setTimeout(() => setNotification(""), 3000);
+    }
   };
 
   // Hàm lưu thay đổi khi chỉnh sửa
-    const handleSaveEdit = async () => {
-      if (!editingNote) return;
-    
-      try {
-        const noteRef = doc(db, "test", editingNote.id);
-        const docSnap = await getDoc(noteRef);
-        if (docSnap.exists()) {
-          // Tạo object cập nhật, loại bỏ các field undefined
-          const updateData = {
-            word: editingNote.word,
-            meaning: editingNote.meaning,
-            type: editingNote.type,
-            addedDate: editingNote.addedDate
-          };
-          // Chỉ thêm exampleOrExplanation nếu nó có giá trị
-          if (editingNote.exampleOrExplanation !== undefined && editingNote.exampleOrExplanation !== "") {
-            updateData.exampleOrExplanation = editingNote.exampleOrExplanation;
-          }
-    
-          await updateDoc(noteRef, updateData);
-          const updatedNotes = notes.map((note) =>
-            note.id === editingNote.id ? { ...note, ...editingNote } : note
-          );
-          setNotes(updatedNotes);
-          setNotification(`Từ "${editingNote.word}" đã được cập nhật thành công`);
+  const handleSaveEdit = async () => {
+    if (!editingNote) return;
+
+    try {
+      const noteRef = doc(db, "test", editingNote.id);
+      const docSnap = await getDoc(noteRef);
+      if (docSnap.exists()) {
+        const updateData = {
+          type: editingNote.type,
+          addedDate: editingNote.addedDate,
+        };
+
+        if (currentTab === "ngữ pháp") {
+          updateData.structure = structure || editingNote.structure;
+          updateData.explanation = newMeaning || editingNote.explanation;
+          updateData.examples = examples.trim().split("\n").filter((ex) => ex.trim()) || editingNote.examples;
         } else {
-          setNotification("Lỗi: Tài liệu không tồn tại trong Firestore!");
+          updateData.word = newWord || editingNote.word;
+          updateData.meaning = newMeaning || editingNote.meaning;
+          updateData.exampleOrExplanation = exampleOrExplanation || editingNote.exampleOrExplanation || undefined;
         }
-        setTimeout(() => setNotification(""), 3000);
-        setEditingNote(null);
-        setIsEditing(false);
-      } catch (error) {
-        console.error("Error updating note:", error.message);
-        setNotification("Lỗi khi cập nhật ghi chú! Chi tiết: " + error.message);
-        setTimeout(() => setNotification(""), 3000);
+
+        await updateDoc(noteRef, updateData);
+        const updatedNotes = notes.map((note) =>
+          note.id === editingNote.id ? { ...note, ...updateData } : note
+        );
+        setNotes(updatedNotes);
+        setNotification(
+          `${currentTab === "ngữ pháp" ? "Quy tắc" : "Từ"} "${
+            newWord || structure || editingNote.word || editingNote.structure
+          }" đã được cập nhật thành công`
+        );
+      } else {
+        setNotification("Lỗi: Tài liệu không tồn tại trong Firestore!");
       }
-    };
+      setTimeout(() => setNotification(""), 3000);
+      setEditingNote(null);
+      setIsEditing(false);
+      setNewWord("");
+      setNewMeaning("");
+      setExampleOrExplanation("");
+      setStructure("");
+      setExamples("");
+    } catch (error) {
+      console.error("Error updating note:", error.message);
+      setNotification("Lỗi khi cập nhật ghi chú! Chi tiết: " + error.message);
+      setTimeout(() => setNotification(""), 3000);
+    }
+  };
 
   // Hàm xóa tất cả note
   const handleDeleteAllNotes = async () => {
@@ -165,11 +208,11 @@ export default function App() {
     try {
       const notesRef = collection(db, "test");
       const querySnapshot = await getDocs(notesRef);
-
-      querySnapshot.forEach(async (docSnapshot) => {
-        await deleteDoc(doc(db, "test", docSnapshot.id));
+      const batch = writeBatch(db);
+      querySnapshot.forEach((docSnapshot) => {
+        batch.delete(doc(db, "test", docSnapshot.id));
       });
-
+      await batch.commit();
       setNotification("Đã xóa toàn bộ ghi chú!");
       setTimeout(() => setNotification(""), 3000);
     } catch (error) {
@@ -180,140 +223,132 @@ export default function App() {
   };
 
   // Hàm sắp xếp từ vựng A-Z
-    const handleSortAZ = async () => {
-      try {
-        const notesRef = collection(db, "test");
-        const querySnapshot = await getDocs(notesRef);
-        const allNotes = querySnapshot.docs
-          .map((doc) => ({ id: doc.id, ...doc.data() }))
-          .filter((note) => note.word && note.type);
-    
-        console.log("All notes fetched:", allNotes);
-    
-        // Lọc và sắp xếp các note thuộc currentTab
-        const notesToSort = allNotes.filter((note) => note.type === currentTab);
-        const sortedNotes = [...notesToSort].sort((a, b) =>
-          a.word.toLowerCase().localeCompare(b.word.toLowerCase())
-        );
-    
-        // Lấy các note không thuộc currentTab để giữ nguyên thứ tự
-        const otherNotes = allNotes.filter((note) => note.type !== currentTab);
-    
-        // Cập nhật state ngay lập tức với thứ tự mới
-        setNotes([...sortedNotes, ...otherNotes]);
-    
-        // Chuẩn bị batch update
-        const batch = writeBatch(db);
-        let updatedCount = 0;
-    
-        // Chỉ update các note đã sắp xếp thuộc currentTab
-        for (const note of sortedNotes) {
-          const noteRef = doc(db, "test", note.id);
-          const docSnap = await getDoc(noteRef);
-          if (docSnap.exists()) {
-            batch.update(noteRef, note); // Cập nhật toàn bộ tài liệu
-            updatedCount++;
-          } else {
-            console.warn(`Document ${note.id} not found, skipping update`);
-          }
-        }
-    
-        // Commit batch nếu có thay đổi
-        if (updatedCount > 0) {
-          await batch.commit();
-          console.log(`Successfully updated ${updatedCount} documents in Firestore`);
+  const handleSortAZ = async () => {
+    try {
+      const notesRef = collection(db, "test");
+      const querySnapshot = await getDocs(notesRef);
+      const allNotes = querySnapshot.docs
+        .map((doc) => ({ id: doc.id, ...doc.data() }))
+        .filter((note) => (note.word || note.structure) && note.type);
+
+      console.log("All notes fetched:", allNotes);
+
+      const notesToSort = allNotes
+        .filter((note) => note.type === currentTab)
+        .sort((a, b) => (a.word || a.structure).toLowerCase().localeCompare((b.word || b.structure).toLowerCase()));
+      const otherNotes = allNotes.filter((note) => note.type !== currentTab);
+
+      const batch = writeBatch(db);
+      let updatedCount = 0;
+      for (const note of notesToSort) {
+        const noteRef = doc(db, "test", note.id);
+        const docSnap = await getDoc(noteRef);
+        if (docSnap.exists()) {
+          batch.update(noteRef, note);
+          updatedCount++;
         } else {
-          console.log("No valid documents to update in Firestore");
+          console.warn(`Document ${note.id} not found, skipping update`);
         }
-    
-        setNotification(`✅ Đã sắp xếp "${currentTab}" theo thứ tự A-Z`);
-        setTimeout(() => setNotification(""), 3000);
-      } catch (error) {
-        console.error("Error sorting notes:", error);
-        setNotification("Lỗi khi sắp xếp ghi chú! Chi tiết: " + error.message);
-        setTimeout(() => setNotification(""), 3000);
       }
-    };
-    
-      // Hàm import file
-      const handleImportFile = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-    
-        try {
-          const reader = new FileReader();
-    
-          if (file.type === "application/json" || file.name.endsWith(".json")) {
-            reader.onload = async (event) => {
-              try {
-                const importedNotes = JSON.parse(event.target.result);
-                const notesRef = collection(db, "test");
-                const batch = writeBatch(db);
-    
-                importedNotes.forEach((note) => {
-                  const newDocRef = doc(notesRef);
-                  batch.set(newDocRef, {
-                    ...note,
-                    addedDate: new Date().toISOString()
-                  });
-                });
-    
-                await batch.commit();
-                setNotification("Đã nhập dữ liệu từ file JSON thành công!");
-                setTimeout(() => setNotification(""), 3000);
-              } catch (error) {
-                setNotification("Lỗi: File JSON không hợp lệ.");
-                setTimeout(() => setNotification(""), 3000);
-              }
-            };
-            reader.readAsText(file);
-          } else if (file.type === "text/plain" || file.name.endsWith(".txt")) {
-            reader.onload = async (event) => {
-              const lines = event.target.result.split("\n").filter(Boolean);
-              const importedNotes = [];
-    
-              lines.forEach((line) => {
-                line = line.trim();
-                if (line.includes("|")) {
-                  const [word, meaning, type] = line.split("|").map(s => s.trim());
-                  importedNotes.push({
-                    word,
-                    meaning,
-                    type: type || currentTab,
-                    addedDate: new Date().toISOString()
-                  });
-                }
+
+      if (updatedCount > 0) {
+        await batch.commit();
+        console.log(`Successfully updated ${updatedCount} documents in Firestore`);
+      } else {
+        console.log("No valid documents to update in Firestore");
+      }
+
+      // Cập nhật state với thứ tự mới
+      setNotes([...notesToSort, ...otherNotes]);
+
+      setNotification(`✅ Đã sắp xếp "${currentTab}" theo thứ tự A-Z`);
+      setTimeout(() => setNotification(""), 3000);
+    } catch (error) {
+      console.error("Error sorting notes:", error);
+      setNotification("Lỗi khi sắp xếp ghi chú! Chi tiết: " + error.message);
+      setTimeout(() => setNotification(""), 3000);
+    }
+  };
+
+  // Hàm import file
+  const handleImportFile = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    try {
+      const reader = new FileReader();
+
+      if (file.type === "application/json" || file.name.endsWith(".json")) {
+        reader.onload = async (event) => {
+          try {
+            const importedNotes = JSON.parse(event.target.result);
+            const notesRef = collection(db, "test");
+            const batch = writeBatch(db);
+
+            importedNotes.forEach((note) => {
+              const newDocRef = doc(notesRef);
+              batch.set(newDocRef, {
+                ...note,
+                addedDate: new Date().toISOString()
               });
-    
-              const notesRef = collection(db, "test");
-              const batch = writeBatch(db);
-    
-              importedNotes.forEach((note) => {
-                const newDocRef = doc(notesRef);
-                batch.set(newDocRef, note);
-              });
-    
-              await batch.commit();
-              setNotification(`Đã nhập ${importedNotes.length} từ thành công!`);
-              setTimeout(() => setNotification(""), 3000);
-            };
-            reader.readAsText(file);
-          } else {
-            setNotification("Chỉ hỗ trợ file .txt hoặc .json");
+            });
+
+            await batch.commit();
+            setNotification("Đã nhập dữ liệu từ file JSON thành công!");
+            setTimeout(() => setNotification(""), 3000);
+          } catch (error) {
+            setNotification("Lỗi: File JSON không hợp lệ.");
             setTimeout(() => setNotification(""), 3000);
           }
-        } catch (error) {
-          console.error("Error importing file:", error);
-          setNotification("Lỗi khi nhập file! Chi tiết: " + error.message);
+        };
+        reader.readAsText(file);
+      } else if (file.type === "text/plain" || file.name.endsWith(".txt")) {
+        reader.onload = async (event) => {
+          const lines = event.target.result.split("\n").filter(Boolean);
+          const importedNotes = [];
+
+          lines.forEach((line) => {
+            line = line.trim();
+            if (line.includes("|")) {
+              const [wordOrStructure, meaningOrExplanation, type] = line.split("|").map(s => s.trim());
+              importedNotes.push({
+                [type === "ngữ pháp" ? "structure" : "word"]: wordOrStructure,
+                [type === "ngữ pháp" ? "explanation" : "meaning"]: meaningOrExplanation,
+                type: type || currentTab,
+                addedDate: new Date().toISOString()
+              });
+            }
+          });
+
+          const notesRef = collection(db, "test");
+          const batch = writeBatch(db);
+
+          importedNotes.forEach((note) => {
+            const newDocRef = doc(notesRef);
+            batch.set(newDocRef, note);
+          });
+
+          await batch.commit();
+          setNotification(`Đã nhập ${importedNotes.length} từ thành công!`);
           setTimeout(() => setNotification(""), 3000);
-        }
-      };
+        };
+        reader.readAsText(file);
+      } else {
+        setNotification("Chỉ hỗ trợ file .txt hoặc .json");
+        setTimeout(() => setNotification(""), 3000);
+      }
+    } catch (error) {
+      console.error("Error importing file:", error);
+      setNotification("Lỗi khi nhập file! Chi tiết: " + error.message);
+      setTimeout(() => setNotification(""), 3000);
+    }
+  };
 
   // Hàm export file .txt
   const handleExportTXT = async () => {
     try {
       const content = notes
-        .map((note) => `${note.word} | ${note.meaning} | ${note.type}`)
+        .map((note) => `${note.word || note.structure} | ${note.meaning || note.explanation} | ${note.type}`)
         .join("\n");
 
       const blob = new Blob([content], { type: "text/plain" });
@@ -335,7 +370,7 @@ export default function App() {
   const filteredNotes = notes
     .filter((note) => note.type === currentTab)
     .filter((note) => {
-      const noteContent = `${note.word} ${note.meaning}`.toLowerCase();
+      const noteContent = `${note.word || note.structure} ${note.meaning || note.explanation}`.toLowerCase();
       const keyword = removeVietnameseTones(searchTerm).toLowerCase();
       const normalizedNote = removeVietnameseTones(noteContent).toLowerCase();
       return normalizedNote.includes(keyword);
@@ -387,7 +422,7 @@ export default function App() {
           </ul>
         </nav>
 
-        {/* 🟦 GOOGLE DỊCH - LUÔN HIỂN THỊ */}
+        {/* 🟦 GOOGLE DỊCH - LUÔN HIỂN THỈ */}
         <div className="mb-6">
           <h2 className="text-lg font-semibold text-gray-700 mb-3">Google Dịch</h2>
           
@@ -452,28 +487,42 @@ export default function App() {
             <div className="mb-2">
               <input
                 type="text"
-                placeholder="Nhập từ tiếng Anh..."
-                value={editingNote.word}
-                onChange={(e) => setEditingNote({ ...editingNote, word: e.target.value })}
+                placeholder={currentTab === "ngữ pháp" ? "Nhập cấu trúc (e.g., S + V + O)..." : "Nhập từ tiếng Anh..."}
+                value={currentTab === "ngữ pháp" ? structure : newWord}
+                onChange={(e) =>
+                  currentTab === "ngữ pháp" ? setStructure(e.target.value) : setNewWord(e.target.value)
+                }
                 className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm"
               />
             </div>
             <div className="mb-4">
               <textarea
-                placeholder="Nhập nghĩa tiếng Việt..."
-                value={editingNote.meaning}
-                onChange={(e) => setEditingNote({ ...editingNote, meaning: e.target.value })}
+                placeholder={currentTab === "ngữ pháp" ? "Nhập giải thích..." : "Nhập nghĩa tiếng Việt..."}
+                value={newMeaning}
+                onChange={(e) => setNewMeaning(e.target.value)}
                 className="w-full h-24 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm"
               />
             </div>
-            <div className="mb-4">
-              <textarea
-                placeholder="Nhập ví dụ hoặc giải thích thêm (tùy chọn)..."
-                value={editingNote.exampleOrExplanation || ""}
-                onChange={(e) => setEditingNote({ ...editingNote, exampleOrExplanation: e.target.value })}
-                className="w-full h-24 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm"
-              />
-            </div>
+            {currentTab === "ngữ pháp" && (
+              <div className="mb-4">
+                <textarea
+                  placeholder="Nhập ví dụ (mỗi dòng một ví dụ, e.g., I + eat + apple)"
+                  value={examples}
+                  onChange={(e) => setExamples(e.target.value)}
+                  className="w-full h-24 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm"
+                />
+              </div>
+            )}
+            {currentTab !== "ngữ pháp" && (
+              <div className="mb-4">
+                <textarea
+                  placeholder="Nhập ví dụ hoặc giải thích thêm (tùy chọn)..."
+                  value={exampleOrExplanation}
+                  onChange={(e) => setExampleOrExplanation(e.target.value)}
+                  className="w-full h-24 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm"
+                />
+              </div>
+            )}
             <button
               onClick={handleSaveEdit}
               className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded transition text-sm"
@@ -486,28 +535,42 @@ export default function App() {
             <div className="mb-2">
               <input
                 type="text"
-                placeholder="Nhập từ tiếng Anh..."
-                value={newWord}
-                onChange={(e) => setNewWord(e.target.value)}
+                placeholder={currentTab === "ngữ pháp" ? "Nhập cấu trúc (e.g., S + V + O)..." : "Nhập từ tiếng Anh..."}
+                value={currentTab === "ngữ pháp" ? structure : newWord}
+                onChange={(e) =>
+                  currentTab === "ngữ pháp" ? setStructure(e.target.value) : setNewWord(e.target.value)
+                }
                 className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
               />
             </div>
             <div className="mb-4">
               <textarea
-                placeholder="Nhập nghĩa tiếng Việt..."
+                placeholder={currentTab === "ngữ pháp" ? "Nhập giải thích..." : "Nhập nghĩa tiếng Việt..."}
                 value={newMeaning}
                 onChange={(e) => setNewMeaning(e.target.value)}
                 className="w-full h-24 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
               />
             </div>
-            <div className="mb-4">
-              <textarea
-                placeholder="Nhập ví dụ hoặc giải thích thêm (tùy chọn)..."
-                value={exampleOrExplanation}
-                onChange={(e) => setExampleOrExplanation(e.target.value)}
-                className="w-full h-24 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
-              />
-            </div>
+            {currentTab === "ngữ pháp" && (
+              <div className="mb-4">
+                <textarea
+                  placeholder="Nhập ví dụ (mỗi dòng một ví dụ, e.g., I + eat + apple)"
+                  value={examples}
+                  onChange={(e) => setExamples(e.target.value)}
+                  className="w-full h-24 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                />
+              </div>
+            )}
+            {currentTab !== "ngữ pháp" && (
+              <div className="mb-4">
+                <textarea
+                  placeholder="Nhập ví dụ hoặc giải thích thêm (tùy chọn)..."
+                  value={exampleOrExplanation}
+                  onChange={(e) => setExampleOrExplanation(e.target.value)}
+                  className="w-full h-24 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                />
+              </div>
+            )}
             <button
               onClick={handleAddNote}
               className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded transition"
@@ -567,7 +630,7 @@ export default function App() {
                 Xác nhận xóa
               </h3>
               <p className="text-gray-600 mb-6">
-                Bạn có chắc chắn muốn xóa từ "{noteToDelete?.word}" không?
+                Bạn có chắc chắn muốn xóa từ "{noteToDelete?.word || noteToDelete?.structure}" không?
               </p>
               <div className="flex justify-end gap-3">
                 <button
@@ -600,16 +663,25 @@ export default function App() {
                   className="flex justify-between items-start bg-gray-50 p-3 rounded-md transition-all duration-200 hover:bg-white hover:shadow-md hover:scale-[1.02]"
                 >
                   <div className="flex-1 pr-4">
-                    <span>{highlightKeyword(`${note.word}: ${note.meaning}`, searchTerm)}</span>
-                    {note.exampleOrExplanation && (
-                      <p className="text-sm italic text-blue-500 mt-1 mb-0">
-                        {note.exampleOrExplanation}
-                      </p>
-                    )}
+                    <span>
+                      {highlightKeyword(
+                        `${currentTab === "ngữ pháp" ? note.structure : note.word}: ${
+                          currentTab === "ngữ pháp" ? note.explanation : note.meaning
+                        }`,
+                        searchTerm
+                      )}
+                    </span>
+                    {(currentTab === "ngữ pháp" ? note.examples : [note.exampleOrExplanation])
+                      .filter((ex) => ex)
+                      .map((ex, index) => (
+                        <p key={index} className="text-sm italic text-blue-500 mt-1 mb-0">
+                          {ex}
+                        </p>
+                      ))}
                   </div>
                   <div className="flex flex-col gap-1">
                     <button
-                      onClick={() => speakText(note.word)}
+                      onClick={() => speakText(note.word || note.structure)}
                       className="text-sm text-indigo-600 hover:text-indigo-800 transition-colors"
                       title="Phát âm"
                     >
