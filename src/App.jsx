@@ -136,6 +136,16 @@ export default function App() {
       if (docSnap.exists()) {
         setEditingNote({ ...note });
         setIsEditing(true);
+        // Cập nhật state form dựa trên tab hiện tại
+        if (currentTab === "ngữ pháp") {
+          setStructure(note.structure || "");
+          setNewMeaning(note.explanation || "");
+          setExamples((note.examples || []).join("\n")); // Chuyển array examples thành text với newline
+        } else {
+          setNewWord(note.word || "");
+          setNewMeaning(note.meaning || "");
+          setExampleOrExplanation(note.exampleOrExplanation || "");
+        }
         window.scrollTo({ top: 0, behavior: "smooth" });
       } else {
         setNotes((prevNotes) => prevNotes.filter((n) => n.id !== note.id));
