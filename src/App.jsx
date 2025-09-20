@@ -793,89 +793,89 @@ export default function App() {
         )}
 
         <main className="bg-white rounded-xl shadow-md overflow-hidden p-6">
-          <ul className="space-y-3">
-            {filteredNotes.length > 0 ? (
-              filteredNotes.map((note) => (
-                <li
-                  key={note.id}
-                  className="flex flex-col justify-between items-start bg-gray-50 p-3 rounded-md transition-all duration-200 hover:bg-white hover:shadow-md hover:scale-[1.02]"
+  <ul className="space-y-3">
+    {filteredNotes.length > 0 ? (
+      filteredNotes.map((note) => (
+        <li
+          key={note.id}
+          className="flex flex-row justify-between items-center bg-gray-50 p-3 rounded-md transition-all duration-200 hover:bg-white hover:shadow-md hover:scale-[1.02]"
+        >
+          <div className="flex-1 pr-4">
+            <span>
+              {highlightKeyword(
+                `${currentTab === "ngữ pháp" ? note.structure : note.word}: ${
+                  currentTab === "ngữ pháp" ? note.explanation : note.meaning
+                }`,
+                searchTerm
+              )}
+            </span>
+            {(currentTab === "ngữ pháp" ? note.examples : [note.exampleOrExplanation])
+              .filter((ex) => ex)
+              .map((ex, index) => (
+                <p key={index} className="text-sm italic text-blue-500 mt-1 mb-0">
+                  {ex}
+                </p>
+              ))}
+          </div>
+          {currentTab === "ngữ pháp" && note.hashtags && (
+            <div className="flex flex-wrap gap-2 mt-2">
+              {note.hashtags.map((tag, index) => (
+                <span
+                  key={index}
+                  onClick={() => handleFilterByTag(tag)}
+                  className="cursor-pointer text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full hover:bg-indigo-200"
                 >
-                  <div className="flex-1 pr-4">
-                    <span>
-                      {highlightKeyword(
-                        `${currentTab === "ngữ pháp" ? note.structure : note.word}: ${
-                          currentTab === "ngữ pháp" ? note.explanation : note.meaning
-                        }`,
-                        searchTerm
-                      )}
-                    </span>
-                    {(currentTab === "ngữ pháp" ? note.examples : [note.exampleOrExplanation])
-                      .filter((ex) => ex)
-                      .map((ex, index) => (
-                        <p key={index} className="text-sm italic text-blue-500 mt-1 mb-0">
-                          {ex}
-                        </p>
-                      ))}
-                  </div>
-                  {currentTab === "ngữ pháp" && note.hashtags && (
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {note.hashtags.map((tag, index) => (
-                        <span
-                          key={index}
-                          onClick={() => handleFilterByTag(tag)}
-                          className="cursor-pointer text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full hover:bg-indigo-200"
-                        >
-                          #{tag}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                  <div className="flex flex-col gap-1 mt-2">
-                    <button
-                      onClick={() => speakText(note.word || note.structure)}
-                      className="text-sm text-indigo-600 hover:text-indigo-800 transition-colors"
-                      title="Phát âm"
-                    >
-                      🔊
-                    </button>
-                    <button
-                      onClick={() => {
-                        setEditingNote(note);
-                        setIsEditing(true);
-                        if (currentTab === "ngữ pháp") {
-                          setStructure(note.structure || "");
-                          setNewMeaning(note.explanation || "");
-                          setExamples((note.examples || []).join("\n"));
-                          setTopic(note.topic || "");
-                          setHashtags((note.hashtags || []).join(", "));
-                        } else {
-                          setNewWord(note.word || "");
-                          setNewMeaning(note.meaning || "");
-                          setExampleOrExplanation(note.exampleOrExplanation || "");
-                        }
-                        window.scrollTo({ top: 0, behavior: "smooth" });
-                      }}
-                      className="text-sm text-blue-600 hover:text-blue-800 hover:underline transition-colors"
-                    >
-                      Sửa
-                    </button>
-                    <button
-                      onClick={() => {
-                        setNoteToDelete(note);
-                        setShowDeleteModal(true);
-                      }}
-                      className="text-sm text-red-600 hover:text-red-800 hover:underline transition-colors"
-                    >
-                      Xóa
-                    </button>
-                  </div>
-                </li>
-              ))
-            ) : (
-              <li className="text-gray-500 italic text-center py-4">Không có ghi chú nào.</li>
-            )}
-          </ul>
-        </main>
+                  #{tag}
+                </span>
+              ))}
+            </div>
+          )}
+          <div className="flex flex-col gap-1 items-end">
+            <button
+              onClick={() => speakText(note.word || note.structure)}
+              className="text-sm text-indigo-600 hover:text-indigo-800 transition-colors"
+              title="Phát âm"
+            >
+              🔊
+            </button>
+            <button
+              onClick={() => {
+                setEditingNote(note);
+                setIsEditing(true);
+                if (currentTab === "ngữ pháp") {
+                  setStructure(note.structure || "");
+                  setNewMeaning(note.explanation || "");
+                  setExamples((note.examples || []).join("\n"));
+                  setTopic(note.topic || "");
+                  setHashtags((note.hashtags || []).join(", "));
+                } else {
+                  setNewWord(note.word || "");
+                  setNewMeaning(note.meaning || "");
+                  setExampleOrExplanation(note.exampleOrExplanation || "");
+                }
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              className="text-sm text-blue-600 hover:text-blue-800 hover:underline transition-colors"
+            >
+              Sửa
+            </button>
+            <button
+              onClick={() => {
+                setNoteToDelete(note);
+                setShowDeleteModal(true);
+              }}
+              className="text-sm text-red-600 hover:text-red-800 hover:underline transition-colors"
+            >
+              Xóa
+            </button>
+          </div>
+        </li>
+      ))
+    ) : (
+      <li className="text-gray-500 italic text-center py-4">Không có ghi chú nào.</li>
+    )}
+  </ul>
+</main>
       </div>
 
       <footer className="text-center text-gray-500 text-sm mt-8">
