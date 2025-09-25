@@ -212,46 +212,54 @@ export default function App() {
   };
 
   // Hàm chỉnh sửa ngữ pháp
-  const handleEditGrammar = async () => {
-    if (!editingNote) return;
-
-    try {
-      const noteRef = doc(db, "test", editingNote.id);
-      const docSnap = await getDoc(noteRef);
-      if (docSnap.exists()) {
-        const updateData = {
-          structure: structure.trim() || editingNote.structure,
-          explanation: newMeaning.trim() || editingNote.explanation,
-          examples: examples.trim().split("\n").filter((ex) => ex.trim()) || editingNote.examples,
-          topic: topic.trim() || editingNote.topic,
-          hashtags: hashtags.trim().split(",").map((tag) => tag.trim()).filter((tag) => tag) || editingNote.hashtags,
-          type: "ngữ pháp",
-          addedDate: editingNote.addedDate,
-        };
-
-        await updateDoc(noteRef, updateData);
-        const updatedNotes = notes.map((note) =>
-          note.id === editingNote.id ? { ...note, ...updateData } : note
-        );
-        setNotes(updatedNotes);
-        setNotification(`Quy tắc "${structure || editingNote.structure}" đã được cập nhật thành công`);
-      } else {
-        setNotification("Lỗi: Tài liệu không tồn tại trong Firestore!");
+  // Hàm chỉnh sửa ngữ pháp
+    const handleEditGrammar = async () => {
+      if (!editingNote) return;
+    
+      try {
+        const noteRef = doc(db, "test", editingNote.id);
+        const docSnap = await getDoc(noteRef);
+        if (docSnap.exists()) {
+          const trimmedTopic = topic.trim();
+          if (!trimmedTopic) {
+            setNotification("Vui lòng chọn hoặc nhập một chủ đề (topic) trước khi lưu!");
+            setTimeout(() => setNotification(""), 3000);
+            return;
+          }
+    
+          const updateData = {
+            structure: structure.trim() || editingNote.structure,
+            explanation: newMeaning.trim() || editingNote.explanation,
+            examples: examples.trim().split("\n").filter((ex) => ex.trim()) || editingNote.examples,
+            topic: trimmedTopic || editingNote.topic,
+            hashtags: hashtags.trim().split(",").map((tag) => tag.trim()).filter((tag) => tag) || editingNote.hashtags,
+            type: "ngữ pháp",
+            addedDate: editingNote.addedDate,
+          };
+    
+          await updateDoc(noteRef, updateData);
+          const updatedNotes = notes.map((note) =>
+            note.id === editingNote.id ? { ...note, ...updateData } : note
+          );
+          setNotes(updatedNotes);
+          setNotification(`Quy tắc "${structure || editingNote.structure}" đã được cập nhật thành công`);
+        } else {
+          setNotification("Lỗi: Tài liệu không tồn tại trong Firestore!");
+        }
+        setTimeout(() => setNotification(""), 3000);
+        setEditingNote(null);
+        setIsEditing(false);
+        setStructure("");
+        setNewMeaning("");
+        setExamples("");
+        setTopic("");
+        setHashtags("");
+      } catch (error) {
+        console.error("Error updating grammar:", error.message);
+        setNotification("Lỗi khi cập nhật ngữ pháp! Chi tiết: " + error.message);
+        setTimeout(() => setNotification(""), 3000);
       }
-      setTimeout(() => setNotification(""), 3000);
-      setEditingNote(null);
-      setIsEditing(false);
-      setStructure("");
-      setNewMeaning("");
-      setExamples("");
-      setTopic("");
-      setHashtags("");
-    } catch (error) {
-      console.error("Error updating grammar:", error.message);
-      setNotification("Lỗi khi cập nhật ngữ pháp! Chi tiết: " + error.message);
-      setTimeout(() => setNotification(""), 3000);
-    }
-  };
+    };
 
   // Hàm chỉnh sửa thành ngữ
   const handleEditIdiom = async () => {
