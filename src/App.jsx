@@ -52,7 +52,9 @@ export default function App() {
   const [examples, setExamples] = useState("");
   const [topic, setTopic] = useState("");
   const [hashtags, setHashtags] = useState("");
-  const [availableTopics] = useState(["tenses", "conditionals", "modals", "passive voice"]);
+  const [availableTopics, setAvailableTopics] = useState(["tenses", "conditionals", "modals", "passive voice"]);
+  const [newTopic, setNewTopic] = useState("");
+  const [isManagingTopics, setIsManagingTopics] = useState(false);
   const [translateInput, setTranslateInput] = useState("");
   const [translateResult, setTranslateResult] = useState("");
 
@@ -80,6 +82,27 @@ export default function App() {
     } catch (error) {
       setTranslateResult("Lỗi khi dịch. Vui lòng thử lại.");
     }
+  };
+
+  // Hàm thêm chủ đề mới
+  const handleAddTopic = () => {
+    if (newTopic.trim() && !availableTopics.includes(newTopic.trim())) {
+      setAvailableTopics([...availableTopics, newTopic.trim()]);
+      setNewTopic("");
+      setNotification("Chủ đề mới đã được thêm thành công!");
+      setTimeout(() => setNotification(""), 3000);
+    } else if (availableTopics.includes(newTopic.trim())) {
+      setNotification("Chủ đề này đã tồn tại!");
+      setTimeout(() => setNotification(""), 3000);
+    }
+  };
+
+  // Hàm xóa chủ đề
+  const handleRemoveTopic = (topicToRemove) => {
+    setAvailableTopics(availableTopics.filter((t) => t !== topicToRemove));
+    if (topic === topicToRemove) setTopic("");
+    setNotification("Chủ đề đã được xóa!");
+    setTimeout(() => setNotification(""), 3000);
   };
 
   // Hàm thêm từ vựng
@@ -577,158 +600,248 @@ export default function App() {
 
         {/* Form nhập ghi chú mới */}
         {isEditing ? (
-          <div className="mb-6">
-            <div className="mb-2">
-              <input
-                type="text"
-                placeholder={currentTab === "ngữ pháp" ? "Nhập cấu trúc (e.g., S + V + O)..." : "Nhập từ tiếng Anh..."}
-                value={currentTab === "ngữ pháp" ? structure : newWord}
-                onChange={(e) =>
-                  currentTab === "ngữ pháp" ? setStructure(e.target.value) : setNewWord(e.target.value)
-                }
-                className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm"
-              />
-            </div>
-            <div className="mb-2">
-              {currentTab === "ngữ pháp" && (
-                <select
-                  value={topic}
-                  onChange={(e) => setTopic(e.target.value)}
+            <div className="mb-6">
+              <div className="mb-2">
+                <input
+                  type="text"
+                  placeholder={currentTab === "ngữ pháp" ? "Nhập cấu trúc (e.g., S + V + O)..." : "Nhập từ tiếng Anh..."}
+                  value={currentTab === "ngữ pháp" ? structure : newWord}
+                  onChange={(e) =>
+                    currentTab === "ngữ pháp" ? setStructure(e.target.value) : setNewWord(e.target.value)
+                  }
                   className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm"
-                >
-                  <option value="">Chọn chủ đề</option>
-                  {availableTopics.map((t) => (
-                    <option key={t} value={t}>{t}</option>
-                  ))}
-                </select>
-              )}
-            </div>
-            <div className="mb-4">
-              <textarea
-                placeholder={currentTab === "ngữ pháp" ? "Nhập giải thích..." : "Nhập nghĩa tiếng Việt..."}
-                value={newMeaning}
-                onChange={(e) => setNewMeaning(e.target.value)}
-                className="w-full h-24 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm"
-              />
-            </div>
-            {currentTab === "ngữ pháp" && (
+                />
+              </div>
+              <div className="mb-2">
+                {currentTab === "ngữ pháp" && (
+                  <div>
+                    <select
+                      value={topic}
+                      onChange={(e) => setTopic(e.target.value)}
+                      className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm mb-2"
+                    >
+                      <option value="">Chọn chủ đề</option>
+                      {availableTopics.map((t) => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </select>
+                    {isManagingTopics ? (
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={newTopic}
+                          onChange={(e) => setNewTopic(e.target.value)}
+                          placeholder="Nhập chủ đề mới..."
+                          className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm"
+                        />
+                        <button
+                          onClick={handleAddTopic}
+                          className="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-sm"
+                        >
+                          Thêm
+                        </button>
+                        <button
+                          onClick={() => setIsManagingTopics(false)}
+                          className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-2 py-1 rounded text-sm"
+                        >
+                          Hủy
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setIsManagingTopics(true)}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm mt-2"
+                      >
+                        Quản lý chủ đề
+                      </button>
+                    )}
+                    {availableTopics.length > 0 && isManagingTopics && (
+                      <div className="mt-2">
+                        {availableTopics.map((t) => (
+                          <span
+                            key={t}
+                            className="inline-block bg-gray-200 text-gray-800 px-2 py-1 rounded-full mr-2 mb-2 cursor-pointer hover:bg-gray-300"
+                            onClick={() => handleRemoveTopic(t)}
+                          >
+                            {t} ✕
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
               <div className="mb-4">
                 <textarea
-                  placeholder="Nhập ví dụ (mỗi dòng một ví dụ, e.g., I + eat + apple)"
-                  value={examples}
-                  onChange={(e) => setExamples(e.target.value)}
+                  placeholder={currentTab === "ngữ pháp" ? "Nhập giải thích..." : "Nhập nghĩa tiếng Việt..."}
+                  value={newMeaning}
+                  onChange={(e) => setNewMeaning(e.target.value)}
                   className="w-full h-24 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm"
                 />
               </div>
-            )}
-            {currentTab === "ngữ pháp" && (
-              <div className="mb-4">
-                <textarea
-                  placeholder="Nhập hashtag (tách bằng dấu phẩy, e.g., simple past, irregular verbs)"
-                  value={hashtags}
-                  onChange={(e) => setHashtags(e.target.value)}
-                  className="w-full h-12 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm"
-                />
-              </div>
-            )}
-            {currentTab !== "ngữ pháp" && (
-              <div className="mb-4">
-                <textarea
-                  placeholder="Nhập ví dụ hoặc giải thích thêm (tùy chọn)..."
-                  value={exampleOrExplanation}
-                  onChange={(e) => setExampleOrExplanation(e.target.value)}
-                  className="w-full h-24 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm"
-                />
-              </div>
-            )}
-            <button
-              onClick={() => {
-                if (currentTab === "từ vựng") handleEditVocabulary();
-                else if (currentTab === "ngữ pháp") handleEditGrammar();
-                else if (currentTab === "thành ngữ") handleEditIdiom();
-              }}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded transition text-sm"
-            >
-              Lưu
-            </button>
-          </div>
-        ) : (
-          <div className="mb-6">
-            <div className="mb-2">
-              <input
-                type="text"
-                placeholder={currentTab === "ngữ pháp" ? "Nhập cấu trúc (e.g., S + V + O)..." : "Nhập từ tiếng Anh..."}
-                value={currentTab === "ngữ pháp" ? structure : newWord}
-                onChange={(e) =>
-                  currentTab === "ngữ pháp" ? setStructure(e.target.value) : setNewWord(e.target.value)
-                }
-                className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
-              />
-            </div>
-            <div className="mb-2">
               {currentTab === "ngữ pháp" && (
-                <select
-                  value={topic}
-                  onChange={(e) => setTopic(e.target.value)}
-                  className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                >
-                  <option value="">Chọn chủ đề</option>
-                  {availableTopics.map((t) => (
-                    <option key={t} value={t}>{t}</option>
-                  ))}
-                </select>
+                <div className="mb-4">
+                  <textarea
+                    placeholder="Nhập ví dụ (mỗi dòng một ví dụ, e.g., I + eat + apple)"
+                    value={examples}
+                    onChange={(e) => setExamples(e.target.value)}
+                    className="w-full h-24 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm"
+                  />
+                </div>
               )}
+              {currentTab === "ngữ pháp" && (
+                <div className="mb-4">
+                  <textarea
+                    placeholder="Nhập hashtag (tách bằng dấu phẩy, e.g., simple past, irregular verbs)"
+                    value={hashtags}
+                    onChange={(e) => setHashtags(e.target.value)}
+                    className="w-full h-12 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm"
+                  />
+                </div>
+              )}
+              {currentTab !== "ngữ pháp" && (
+                <div className="mb-4">
+                  <textarea
+                    placeholder="Nhập ví dụ hoặc giải thích thêm (tùy chọn)..."
+                    value={exampleOrExplanation}
+                    onChange={(e) => setExampleOrExplanation(e.target.value)}
+                    className="w-full h-24 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm"
+                  />
+                </div>
+              )}
+              <button
+                onClick={() => {
+                  if (currentTab === "từ vựng") handleEditVocabulary();
+                  else if (currentTab === "ngữ pháp") handleEditGrammar();
+                  else if (currentTab === "thành ngữ") handleEditIdiom();
+                }}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded transition text-sm"
+              >
+                Lưu
+              </button>
             </div>
-            <div className="mb-4">
-              <textarea
-                placeholder={currentTab === "ngữ pháp" ? "Nhập giải thích..." : "Nhập nghĩa tiếng Việt..."}
-                value={newMeaning}
-                onChange={(e) => setNewMeaning(e.target.value)}
-                className="w-full h-24 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
-              />
-            </div>
-            {currentTab === "ngữ pháp" && (
+          ) : (
+            <div className="mb-6">
+              <div className="mb-2">
+                <input
+                  type="text"
+                  placeholder={currentTab === "ngữ pháp" ? "Nhập cấu trúc (e.g., S + V + O)..." : "Nhập từ tiếng Anh..."}
+                  value={currentTab === "ngữ pháp" ? structure : newWord}
+                  onChange={(e) =>
+                    currentTab === "ngữ pháp" ? setStructure(e.target.value) : setNewWord(e.target.value)
+                  }
+                  className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                />
+              </div>
+              <div className="mb-2">
+                {currentTab === "ngữ pháp" && (
+                  <div>
+                    <select
+                      value={topic}
+                      onChange={(e) => setTopic(e.target.value)}
+                      className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm mb-2"
+                    >
+                      <option value="">Chọn chủ đề</option>
+                      {availableTopics.map((t) => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </select>
+                    {isManagingTopics ? (
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={newTopic}
+                          onChange={(e) => setNewTopic(e.target.value)}
+                          placeholder="Nhập chủ đề mới..."
+                          className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm"
+                        />
+                        <button
+                          onClick={handleAddTopic}
+                          className="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-sm"
+                        >
+                          Thêm
+                        </button>
+                        <button
+                          onClick={() => setIsManagingTopics(false)}
+                          className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-2 py-1 rounded text-sm"
+                        >
+                          Hủy
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setIsManagingTopics(true)}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm mt-2"
+                      >
+                        Quản lý chủ đề
+                      </button>
+                    )}
+                    {availableTopics.length > 0 && isManagingTopics && (
+                      <div className="mt-2">
+                        {availableTopics.map((t) => (
+                          <span
+                            key={t}
+                            className="inline-block bg-gray-200 text-gray-800 px-2 py-1 rounded-full mr-2 mb-2 cursor-pointer hover:bg-gray-300"
+                            onClick={() => handleRemoveTopic(t)}
+                          >
+                            {t} ✕
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
               <div className="mb-4">
                 <textarea
-                  placeholder="Nhập ví dụ (mỗi dòng một ví dụ, e.g., I + eat + apple)"
-                  value={examples}
-                  onChange={(e) => setExamples(e.target.value)}
+                  placeholder={currentTab === "ngữ pháp" ? "Nhập giải thích..." : "Nhập nghĩa tiếng Việt..."}
+                  value={newMeaning}
+                  onChange={(e) => setNewMeaning(e.target.value)}
                   className="w-full h-24 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
                 />
               </div>
-            )}
-            {currentTab === "ngữ pháp" && (
-              <div className="mb-4">
-                <textarea
-                  placeholder="Nhập hashtag (tách bằng dấu phẩy, e.g., simple past, irregular verbs)"
-                  value={hashtags}
-                  onChange={(e) => setHashtags(e.target.value)}
-                  className="w-full h-12 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                />
-              </div>
-            )}
-            {currentTab !== "ngữ pháp" && (
-              <div className="mb-4">
-                <textarea
-                  placeholder="Nhập ví dụ hoặc giải thích thêm (tùy chọn)..."
-                  value={exampleOrExplanation}
-                  onChange={(e) => setExampleOrExplanation(e.target.value)}
-                  className="w-full h-24 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                />
-              </div>
-            )}
-            <button
-              onClick={() => {
-                if (currentTab === "từ vựng") handleAddVocabulary();
-                else if (currentTab === "ngữ pháp") handleAddGrammar();
-                else if (currentTab === "thành ngữ") handleAddIdiom();
-              }}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded transition"
-            >
-              Lưu
-            </button>
-          </div>
-        )}
+              {currentTab === "ngữ pháp" && (
+                <div className="mb-4">
+                  <textarea
+                    placeholder="Nhập ví dụ (mỗi dòng một ví dụ, e.g., I + eat + apple)"
+                    value={examples}
+                    onChange={(e) => setExamples(e.target.value)}
+                    className="w-full h-24 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                  />
+                </div>
+              )}
+              {currentTab === "ngữ pháp" && (
+                <div className="mb-4">
+                  <textarea
+                    placeholder="Nhập hashtag (tách bằng dấu phẩy, e.g., simple past, irregular verbs)"
+                    value={hashtags}
+                    onChange={(e) => setHashtags(e.target.value)}
+                    className="w-full h-12 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                  />
+                </div>
+              )}
+              {currentTab !== "ngữ pháp" && (
+                <div className="mb-4">
+                  <textarea
+                    placeholder="Nhập ví dụ hoặc giải thích thêm (tùy chọn)..."
+                    value={exampleOrExplanation}
+                    onChange={(e) => setExampleOrExplanation(e.target.value)}
+                    className="w-full h-24 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                  />
+                </div>
+              )}
+              <button
+                onClick={() => {
+                  if (currentTab === "từ vựng") handleAddVocabulary();
+                  else if (currentTab === "ngữ pháp") handleAddGrammar();
+                  else if (currentTab === "thành ngữ") handleAddIdiom();
+                }}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded transition"
+              >
+                Lưu
+              </button>
+            </div>
+          )}
 
         {/* Nút Import/Export */}
         <div className="mb-6 flex flex-wrap gap-2 justify-between">
