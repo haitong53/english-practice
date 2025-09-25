@@ -9,7 +9,7 @@ import {
   query,
   writeBatch,
   onSnapshot,
-  getDoc
+  getDoc,
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage } from "./firebase"; // Đường dẫn đến file firebase.js, chỉ cần db và storage
@@ -35,7 +35,18 @@ const speakText = (text) => {
   window.speechSynthesis.speak(utterance);
 };
 
-const NoteItem = ({ note, currentTab, searchTerm, speakText, highlightKeyword, handleFilterByTag, handleEditNote, setNoteToDelete, setShowDeleteModal }) => {
+// Component cho mỗi item ghi chú
+const NoteItem = ({
+  note,
+  currentTab,
+  searchTerm,
+  speakText,
+  highlightKeyword,
+  handleFilterByTag,
+  handleEditNote,
+  setNoteToDelete,
+  setShowDeleteModal,
+}) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
@@ -43,27 +54,47 @@ const NoteItem = ({ note, currentTab, searchTerm, speakText, highlightKeyword, h
       key={note.id}
       className="flex justify-between items-start bg-gray-50 p-3 rounded-md transition-all duration-200 hover:bg-white hover:shadow-md hover:scale-[1.02]"
     >
-      {/* Cột trái: Từ + Nghĩa + Giải thích */}
-      <div className="flex-1 pr-4">
-        <span>{highlightKeyword(`${note.word}: ${note.meaning}`, searchTerm)}</span>
-        {note.exampleOrExplanation && (
-          <p className="text-sm italic text-blue-500 mt-1 mb-0">
-            {note.exampleOrExplanation}
-          </p>
-        )}
-        {currentTab === "ngữ pháp" && isExpanded && (
-          <div className="mt-2">
-            <p className="text-sm italic text-blue-500 mt-1 mb-0">
-              {note.exampleOrExplanation}
-            </p>
+      <div className="flex-1 pr-4 break-words">
+        <span>
+          {highlightKeyword(
+            `${currentTab === "ngữ pháp" ? note.structure : note.word}: ${
+              currentTab === "ngữ pháp" ? note.explanation : note.meaning
+            }`,
+            searchTerm
+          )}
+        </span>
+        {(currentTab === "ngữ pháp" && isExpanded) || currentTab !== "ngữ pháp" ? (
+          (currentTab === "ngữ pháp" ? note.examples : [note.exampleOrExplanation])
+            .filter((ex) => ex)
+            .map((ex, index) => (
+              <p key={index} className="text-sm italic text-blue-500 mt-1 mb-0 break-words">
+                {ex}
+              </p>
+            ))
+        ) : null}
+        {currentTab === "ngữ pháp" && note.hashtags && isExpanded && (
+          <div className="flex flex-wrap gap-2 mt-2">
+            {note.hashtags.map((tag, index) => (
+              <span
+                key={index}
+                onClick={() => handleFilterByTag(tag)}
+                className="cursor-pointer text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full hover:bg-indigo-200"
+              >
+                #{tag}
+              </span>
+            ))}
           </div>
         )}
       </div>
-
-      {/* Cột phải: Nút Sửa / Xóa / Phát âm */}
-      <div className="flex flex-col gap-1">
+      <div className="flex flex-col items-end gap-1">
         <button
-          onClick={() => speakText(note.word)}
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="text-sm text-gray-600 hover:text-gray-800 mb-1"
+        >
+          {isExpanded ? "▲ Thu gọn" : "▼ Xem chi tiết"}
+        </button>
+        <button
+          onClick={() => speakText(note.word || note.structure)}
           className="text-sm text-indigo-600 hover:text-indigo-800 transition-colors"
           title="Phát âm"
         >
@@ -79,7 +110,6 @@ const NoteItem = ({ note, currentTab, searchTerm, speakText, highlightKeyword, h
           onClick={() => {
             setNoteToDelete(note);
             setShowDeleteModal(true);
-            console.log("showDeleteModal:", true);
           }}
           className="text-sm text-red-600 hover:text-red-800 hover:underline transition-colors"
         >
@@ -103,6 +133,18 @@ export default function App() {
   const [isEditing, setIsEditing] = useState(false);
   const [notification, setNotification] = useState("");
   const [exampleOrExplanation, setExampleOrExplanation] = useState("");
+  const [structure, setStructure] = useState("");
+  const [examples, setExamples] = useState("");
+  const [topic, setTopic] = useState("");
+  const [hashtags, setHashtags] = useState("");
+  const [availableTopics, setAvailableTopics] = useState([
+    "tenses",
+    "conditionals",
+    "modals",
+    "passive voice",
+  ]);
+  const [newTopic, setNewTopic] = useState("");
+  const [isManagingTopics, setIsManagingTopics] = useState(false);
   const [translateInput, setTranslateInput] = useState("");
   const [translateResult, setTranslateResult] = useState("");
 
@@ -117,13 +159,15 @@ export default function App() {
     return unsubscribe;
   }, []);
 
-  // Hàm gọi Google Translate API (giả lập)
+  // Hàm gọi Google Translate API
   const handleTranslate = async (sourceLang, targetLang) => {
     if (!translateInput.trim()) return;
 
     try {
       const response = await fetch(
-        `https://api.mymemory.translated.net/get?q=${encodeURIComponent(translateInput)}&langpair=${sourceLang}|${targetLang}`
+        `https://api.mymemory.translated.net/get?q=${encodeURIComponent(
+          translateInput
+        )}&langpair=${sourceLang}|${targetLang}`
       );
       const data = await response.json();
       setTranslateResult(data.responseData.translatedText || "Không thể dịch");
@@ -132,27 +176,216 @@ export default function App() {
     }
   };
 
-  // Hàm thêm ghi chú mới
-  const handleAddNote = async () => {
+  // Hàm thêm chủ đề mới
+  const handleAddTopic = () => {
+    if (newTopic.trim() && !availableTopics.includes(newTopic.trim())) {
+      setAvailableTopics([...availableTopics, newTopic.trim()]);
+      setNewTopic("");
+      setNotification("Chủ đề mới đã được thêm thành công!");
+    } else if (availableTopics.includes(newTopic.trim())) {
+      setNotification("Chủ đề này đã tồn tại!");
+    }
+    setTimeout(() => setNotification(""), 3000);
+  };
+
+  // Hàm xóa chủ đề
+  const handleRemoveTopic = (topicToRemove) => {
+    setAvailableTopics(availableTopics.filter((t) => t !== topicToRemove));
+    if (topic === topicToRemove) setTopic("");
+    setNotification("Chủ đề đã được xóa!");
+    setTimeout(() => setNotification(""), 3000);
+  };
+
+  // Hàm thêm từ vựng
+  const handleAddVocabulary = async () => {
     if (!newWord.trim() || !newMeaning.trim()) return;
 
     try {
-      const notesRef = collection(db, "test");
-      await addDoc(notesRef, {
-        type: currentTab,
-        word: newWord,
-        meaning: newMeaning,
-        exampleOrExplanation: exampleOrExplanation.trim(),
-        addedDate: new Date().toISOString()
-      });
+      const noteData = {
+        type: "từ vựng",
+        word: newWord.trim(),
+        meaning: newMeaning.trim(),
+        exampleOrExplanation: exampleOrExplanation.trim() || "",
+        addedDate: new Date().toISOString(),
+      };
+      await addDoc(collection(db, "test"), noteData);
       setNotification(`Từ "${newWord}" đã được thêm vào Note`);
-      setTimeout(() => setNotification(""), 3000);
       setNewWord("");
       setNewMeaning("");
       setExampleOrExplanation("");
     } catch (error) {
-      console.error("Error adding note:", error);
+      console.error("Error adding vocabulary:", error);
     }
+    setTimeout(() => setNotification(""), 3000);
+  };
+
+  // Hàm thêm ngữ pháp
+  const handleAddGrammar = async () => {
+    if (!structure.trim() || !newMeaning.trim() || !topic.trim()) return;
+
+    try {
+      const noteData = {
+        type: "ngữ pháp",
+        structure: structure.trim(),
+        explanation: newMeaning.trim(),
+        examples: examples.trim().split("\n").filter((ex) => ex.trim()),
+        topic: topic.trim(),
+        hashtags: hashtags.trim().split(",").map((tag) => tag.trim()).filter((tag) => tag),
+        addedDate: new Date().toISOString(),
+      };
+      await addDoc(collection(db, "test"), noteData);
+      setNotification(`Quy tắc "${structure}" đã được thêm vào Note`);
+      setStructure("");
+      setNewMeaning("");
+      setExamples("");
+      setTopic("");
+      setHashtags("");
+    } catch (error) {
+      console.error("Error adding grammar:", error);
+    }
+    setTimeout(() => setNotification(""), 3000);
+  };
+
+  // Hàm thêm thành ngữ
+  const handleAddIdiom = async () => {
+    if (!newWord.trim() || !newMeaning.trim()) return;
+
+    try {
+      const noteData = {
+        type: "thành ngữ",
+        word: newWord.trim(),
+        meaning: newMeaning.trim(),
+        exampleOrExplanation: exampleOrExplanation.trim() || "",
+        addedDate: new Date().toISOString(),
+      };
+      await addDoc(collection(db, "test"), noteData);
+      setNotification(`Thành ngữ "${newWord}" đã được thêm vào Note`);
+      setNewWord("");
+      setNewMeaning("");
+      setExampleOrExplanation("");
+    } catch (error) {
+      console.error("Error adding idiom:", error);
+    }
+    setTimeout(() => setNotification(""), 3000);
+  };
+
+  // Hàm chỉnh sửa từ vựng
+  const handleEditVocabulary = async () => {
+    if (!editingNote) return;
+
+    try {
+      const noteRef = doc(db, "test", editingNote.id);
+      const docSnap = await getDoc(noteRef);
+      if (docSnap.exists()) {
+        const updateData = {
+          word: newWord.trim() || editingNote.word,
+          meaning: newMeaning.trim() || editingNote.meaning,
+          type: "từ vựng",
+          addedDate: editingNote.addedDate,
+          exampleOrExplanation: exampleOrExplanation.trim() || "",
+        };
+        await updateDoc(noteRef, updateData);
+        const updatedNotes = notes.map((note) =>
+          note.id === editingNote.id ? { ...note, ...updateData } : note
+        );
+        setNotes(updatedNotes);
+        setNotification(`Từ "${newWord || editingNote.word}" đã được cập nhật thành công`);
+      } else {
+        setNotification("Lỗi: Tài liệu không tồn tại trong Firestore!");
+      }
+    } catch (error) {
+      console.error("Error updating vocabulary:", error.message);
+      setNotification("Lỗi khi cập nhật từ vựng! Chi tiết: " + error.message);
+    }
+    setEditingNote(null);
+    setIsEditing(false);
+    setNewWord("");
+    setNewMeaning("");
+    setExampleOrExplanation("");
+    setTimeout(() => setNotification(""), 3000);
+  };
+
+  // Hàm chỉnh sửa ngữ pháp
+  const handleEditGrammar = async () => {
+    if (!editingNote) return;
+
+    try {
+      const noteRef = doc(db, "test", editingNote.id);
+      const docSnap = await getDoc(noteRef);
+      if (docSnap.exists()) {
+        const trimmedTopic = topic.trim();
+        if (!trimmedTopic) {
+          setNotification("Vui lòng chọn hoặc nhập một chủ đề (topic) trước khi lưu!");
+          setTimeout(() => setNotification(""), 3000);
+          return;
+        }
+        const updateData = {
+          structure: structure.trim() || editingNote.structure,
+          explanation: newMeaning.trim() || editingNote.explanation,
+          examples: examples.trim().split("\n").filter((ex) => ex.trim()) || editingNote.examples,
+          topic: trimmedTopic || editingNote.topic,
+          hashtags:
+            hashtags.trim().split(",").map((tag) => tag.trim()).filter((tag) => tag) || editingNote.hashtags,
+          type: "ngữ pháp",
+          addedDate: editingNote.addedDate,
+        };
+        await updateDoc(noteRef, updateData);
+        const updatedNotes = notes.map((note) =>
+          note.id === editingNote.id ? { ...note, ...updateData } : note
+        );
+        setNotes(updatedNotes);
+        setNotification(`Quy tắc "${structure || editingNote.structure}" đã được cập nhật thành công`);
+      } else {
+        setNotification("Lỗi: Tài liệu không tồn tại trong Firestore!");
+      }
+    } catch (error) {
+      console.error("Error updating grammar:", error.message);
+      setNotification("Lỗi khi cập nhật ngữ pháp! Chi tiết: " + error.message);
+    }
+    setEditingNote(null);
+    setIsEditing(false);
+    setStructure("");
+    setNewMeaning("");
+    setExamples("");
+    setTopic("");
+    setHashtags("");
+    setTimeout(() => setNotification(""), 3000);
+  };
+
+  // Hàm chỉnh sửa thành ngữ
+  const handleEditIdiom = async () => {
+    if (!editingNote) return;
+
+    try {
+      const noteRef = doc(db, "test", editingNote.id);
+      const docSnap = await getDoc(noteRef);
+      if (docSnap.exists()) {
+        const updateData = {
+          word: newWord.trim() || editingNote.word,
+          meaning: newMeaning.trim() || editingNote.meaning,
+          type: "thành ngữ",
+          addedDate: editingNote.addedDate,
+          exampleOrExplanation: exampleOrExplanation.trim() || "",
+        };
+        await updateDoc(noteRef, updateData);
+        const updatedNotes = notes.map((note) =>
+          note.id === editingNote.id ? { ...note, ...updateData } : note
+        );
+        setNotes(updatedNotes);
+        setNotification(`Thành ngữ "${newWord || editingNote.word}" đã được cập nhật thành công`);
+      } else {
+        setNotification("Lỗi: Tài liệu không tồn tại trong Firestore!");
+      }
+    } catch (error) {
+      console.error("Error updating idiom:", error.message);
+      setNotification("Lỗi khi cập nhật thành ngữ! Chi tiết: " + error.message);
+    }
+    setEditingNote(null);
+    setIsEditing(false);
+    setNewWord("");
+    setNewMeaning("");
+    setExampleOrExplanation("");
+    setTimeout(() => setNotification(""), 3000);
   };
 
   // Hàm xóa một note
@@ -160,41 +393,10 @@ export default function App() {
     try {
       const noteRef = doc(db, "test", id);
       await deleteDoc(noteRef);
-      setNotification("Đã xóa từ thành công!");
+      setNotification("Đã xóa ghi chú thành công!");
       setTimeout(() => setNotification(""), 3000);
     } catch (error) {
       console.error("Error deleting note:", error);
-    }
-  };
-
-  // Hàm chỉnh sửa note
-  const handleEditNote = (note) => {
-    setEditingNote(note);
-    setIsEditing(true);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  // Hàm lưu thay đổi khi chỉnh sửa
-  const handleSaveEdit = async () => {
-    if (!editingNote) return;
-
-    try {
-      const noteRef = doc(db, "test", editingNote.id);
-      await updateDoc(noteRef, {
-        word: newWord,
-        meaning: newMeaning,
-        exampleOrExplanation: exampleOrExplanation.trim(),
-        type: editingNote.type,
-        addedDate: editingNote.addedDate
-      });
-      setNotification(`Từ "${newWord}" đã được cập nhật thành công`);
-      setTimeout(() => setNotification(""), 3000);
-      setEditingNote(null);
-      setIsEditing(false);
-    } catch (error) {
-      console.error("Error updating note:", error);
-      setNotification("Lỗi khi cập nhật ghi chú! Chi tiết: " + error.message);
-      setTimeout(() => setNotification(""), 3000);
     }
   };
 
@@ -205,9 +407,11 @@ export default function App() {
     try {
       const notesRef = collection(db, "test");
       const querySnapshot = await getDocs(notesRef);
-      querySnapshot.forEach(async (docSnapshot) => {
-        await deleteDoc(doc(db, "test", docSnapshot.id));
+      const batch = writeBatch(db);
+      querySnapshot.forEach((docSnapshot) => {
+        batch.delete(doc(db, "test", docSnapshot.id));
       });
+      await batch.commit();
       setNotification("Đã xóa toàn bộ ghi chú!");
       setTimeout(() => setNotification(""), 3000);
     } catch (error) {
@@ -217,29 +421,32 @@ export default function App() {
     }
   };
 
-  // Hàm sắp xếp từ vựng A-Z
+  // Hàm sắp xếp A-Z
   const handleSortAZ = async () => {
     try {
       const notesRef = collection(db, "test");
       const querySnapshot = await getDocs(notesRef);
       const allNotes = querySnapshot.docs
         .map((doc) => ({ id: doc.id, ...doc.data() }))
-        .filter((note) => note.word && note.type);
-
-      const sortedNotes = allNotes
+        .filter((note) => (note.word || note.structure) && note.type);
+      const notesToSort = allNotes
         .filter((note) => note.type === currentTab)
-        .sort((a, b) => a.word.toLowerCase().localeCompare(b.word.toLowerCase()));
-
+        .sort((a, b) =>
+          (a.word || a.structure).toLowerCase().localeCompare((b.word || b.structure).toLowerCase())
+        );
       const otherNotes = allNotes.filter((note) => note.type !== currentTab);
-
       const batch = writeBatch(db);
-      sortedNotes.forEach((note) => {
+      let updatedCount = 0;
+      for (const note of notesToSort) {
         const noteRef = doc(db, "test", note.id);
-        batch.update(noteRef, note);
-      });
-      await batch.commit();
-
-      setNotes([...sortedNotes, ...otherNotes]);
+        const docSnap = await getDoc(noteRef);
+        if (docSnap.exists()) {
+          batch.update(noteRef, note);
+          updatedCount++;
+        }
+      }
+      if (updatedCount > 0) await batch.commit();
+      setNotes([...notesToSort, ...otherNotes]);
       setNotification(`✅ Đã sắp xếp "${currentTab}" theo thứ tự A-Z`);
       setTimeout(() => setNotification(""), 3000);
     } catch (error) {
@@ -256,22 +463,19 @@ export default function App() {
 
     try {
       const reader = new FileReader();
-
       if (file.type === "application/json" || file.name.endsWith(".json")) {
         reader.onload = async (event) => {
           try {
             const importedNotes = JSON.parse(event.target.result);
             const notesRef = collection(db, "test");
             const batch = writeBatch(db);
-
             importedNotes.forEach((note) => {
               const newDocRef = doc(notesRef);
               batch.set(newDocRef, {
                 ...note,
-                addedDate: new Date().toISOString()
+                addedDate: new Date().toISOString(),
               });
             });
-
             await batch.commit();
             setNotification("Đã nhập dữ liệu từ file JSON thành công!");
             setTimeout(() => setNotification(""), 3000);
@@ -284,31 +488,30 @@ export default function App() {
       } else if (file.type === "text/plain" || file.name.endsWith(".txt")) {
         reader.onload = async (event) => {
           const lines = event.target.result.split("\n").filter(Boolean);
-          const importedNotes = [];
-
-          lines.forEach((line) => {
-            line = line.trim();
-            if (line.includes("|")) {
-              const [word, meaning, type] = line.split("|").map(s => s.trim());
-              importedNotes.push({
-                word,
-                meaning,
-                type: type || currentTab,
-                addedDate: new Date().toISOString()
-              });
-            }
+          const importedNotes = lines.map((line) => {
+            const [wordOrStructure, meaningOrExplanation, type, topic, tags] = line
+              .split("|")
+              .map((s) => s.trim());
+            return {
+              [type === "ngữ pháp" ? "structure" : "word"]: wordOrStructure,
+              [type === "ngữ pháp" ? "explanation" : "meaning"]: meaningOrExplanation,
+              type: type || currentTab,
+              [type === "ngữ pháp" ? "topic" : ""]: topic || "",
+              [type === "ngữ pháp" ? "hashtags" : ""]: tags
+                ? tags.split(",").map((t) => t.trim())
+                : [],
+              exampleOrExplanation: type !== "ngữ pháp" ? "" : undefined,
+              addedDate: new Date().toISOString(),
+            };
           });
-
           const notesRef = collection(db, "test");
           const batch = writeBatch(db);
-
           importedNotes.forEach((note) => {
             const newDocRef = doc(notesRef);
             batch.set(newDocRef, note);
           });
-
           await batch.commit();
-          setNotification(`Đã nhập ${importedNotes.length} từ thành công!`);
+          setNotification(`Đã nhập ${importedNotes.length} ghi chú thành công!`);
           setTimeout(() => setNotification(""), 3000);
         };
         reader.readAsText(file);
@@ -327,9 +530,12 @@ export default function App() {
   const handleExportTXT = async () => {
     try {
       const content = notes
-        .map((note) => `${note.word} | ${note.meaning} | ${note.type}`)
+        .map((note) =>
+          `${note.word || note.structure} | ${note.meaning || note.explanation} | ${
+            note.type
+          } | ${note.topic || ""} | ${note.hashtags?.join(", ") || ""}`
+        )
         .join("\n");
-
       const blob = new Blob([content], { type: "text/plain" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -346,13 +552,26 @@ export default function App() {
     }
   };
 
+  // Hàm lọc theo hashtag
+  const handleFilterByTag = (tag) => {
+    setSearchTerm(tag);
+  };
+
   const filteredNotes = notes
     .filter((note) => note.type === currentTab)
     .filter((note) => {
-      const noteContent = `${note.word} ${note.meaning}`.toLowerCase();
+      const noteContent = `${
+        note.word || note.structure
+      } ${note.meaning || note.explanation}`.toLowerCase();
       const keyword = removeVietnameseTones(searchTerm).toLowerCase();
       const normalizedNote = removeVietnameseTones(noteContent).toLowerCase();
-      return normalizedNote.includes(keyword);
+      return (
+        normalizedNote.includes(keyword) ||
+        (note.hashtags &&
+          note.hashtags.some((ht) =>
+            removeVietnameseTones(ht).toLowerCase().includes(keyword)
+          ))
+      );
     });
 
   const highlightKeyword = (text, keyword) => {
@@ -360,13 +579,17 @@ export default function App() {
     const normalizedKeyword = removeVietnameseTones(keyword).toLowerCase();
     const normalizedText = removeVietnameseTones(text).toLowerCase();
     const originalText = text;
-
     const regex = new RegExp(`(${normalizedKeyword})`, "gi");
     const parts = originalText.split(regex);
-
     return parts.map((part, index) => {
-      if (removeVietnameseTones(part).toLowerCase().includes(normalizedKeyword)) {
-        return <mark key={index} className="bg-yellow-300">{part}</mark>;
+      if (
+        removeVietnameseTones(part).toLowerCase().includes(normalizedKeyword)
+      ) {
+        return (
+          <mark key={index} className="bg-yellow-300">
+            {part}
+          </mark>
+        );
       }
       return part;
     });
@@ -401,14 +624,12 @@ export default function App() {
 
         <div className="mb-6">
           <h2 className="text-lg font-semibold text-gray-700 mb-3">Google Dịch</h2>
-          
           <textarea
             value={translateInput}
             onChange={(e) => setTranslateInput(e.target.value)}
             placeholder="Nhập từ hoặc câu cần dịch..."
             className="w-full h-24 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
           />
-      
           <div className="mt-4 flex gap-3">
             <button
               onClick={() => handleTranslate("en", "vi")}
@@ -423,7 +644,6 @@ export default function App() {
               VN → EN
             </button>
           </div>
-      
           {translateResult && (
             <div className="mt-4 p-4 bg-gray-50 rounded-md">
               <p className="font-medium">Kết quả:</p>
@@ -460,10 +680,16 @@ export default function App() {
             <div className="mb-2">
               <input
                 type="text"
-                placeholder={currentTab === "ngữ pháp" ? "Nhập cấu trúc (e.g., S + V + O)..." : "Nhập từ tiếng Anh..."}
+                placeholder={
+                  currentTab === "ngữ pháp"
+                    ? "Nhập cấu trúc (e.g., S + V + O)..."
+                    : "Nhập từ tiếng Anh..."
+                }
                 value={currentTab === "ngữ pháp" ? structure : newWord}
                 onChange={(e) =>
-                  currentTab === "ngữ pháp" ? setStructure(e.target.value) : setNewWord(e.target.value)
+                  currentTab === "ngữ pháp"
+                    ? setStructure(e.target.value)
+                    : setNewWord(e.target.value)
                 }
                 className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm"
               />
@@ -478,7 +704,9 @@ export default function App() {
                   >
                     <option value="">Chọn chủ đề</option>
                     {availableTopics.map((t) => (
-                      <option key={t} value={t}>{t}</option>
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
                     ))}
                   </select>
                   {isManagingTopics ? (
@@ -529,7 +757,9 @@ export default function App() {
             </div>
             <div className="mb-4">
               <textarea
-                placeholder={currentTab === "ngữ pháp" ? "Nhập giải thích..." : "Nhập nghĩa tiếng Việt..."}
+                placeholder={
+                  currentTab === "ngữ pháp" ? "Nhập giải thích..." : "Nhập nghĩa tiếng Việt..."
+                }
                 value={newMeaning}
                 onChange={(e) => setNewMeaning(e.target.value)}
                 className="w-full h-24 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm"
@@ -603,10 +833,16 @@ export default function App() {
             <div className="mb-2">
               <input
                 type="text"
-                placeholder={currentTab === "ngữ pháp" ? "Nhập cấu trúc (e.g., S + V + O)..." : "Nhập từ tiếng Anh..."}
+                placeholder={
+                  currentTab === "ngữ pháp"
+                    ? "Nhập cấu trúc (e.g., S + V + O)..."
+                    : "Nhập từ tiếng Anh..."
+                }
                 value={currentTab === "ngữ pháp" ? structure : newWord}
                 onChange={(e) =>
-                  currentTab === "ngữ pháp" ? setStructure(e.target.value) : setNewWord(e.target.value)
+                  currentTab === "ngữ pháp"
+                    ? setStructure(e.target.value)
+                    : setNewWord(e.target.value)
                 }
                 className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
               />
@@ -621,7 +857,9 @@ export default function App() {
                   >
                     <option value="">Chọn chủ đề</option>
                     {availableTopics.map((t) => (
-                      <option key={t} value={t}>{t}</option>
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
                     ))}
                   </select>
                   {isManagingTopics ? (
@@ -672,7 +910,9 @@ export default function App() {
             </div>
             <div className="mb-4">
               <textarea
-                placeholder={currentTab === "ngữ pháp" ? "Nhập giải thích..." : "Nhập nghĩa tiếng Việt..."}
+                placeholder={
+                  currentTab === "ngữ pháp" ? "Nhập giải thích..." : "Nhập nghĩa tiếng Việt..."
+                }
                 value={newMeaning}
                 onChange={(e) => setNewMeaning(e.target.value)}
                 className="w-full h-24 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
@@ -741,7 +981,6 @@ export default function App() {
           </div>
         )}
 
-        {/* Nút Import/Export */}
         <div className="mb-6 flex flex-wrap gap-2 justify-between">
           <label className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded cursor-pointer text-sm">
             Import từ file
@@ -752,7 +991,6 @@ export default function App() {
               onChange={handleImportFile}
             />
           </label>
-        
           <div className="flex flex-wrap gap-2">
             <button
               onClick={handleExportTXT}
@@ -763,7 +1001,6 @@ export default function App() {
           </div>
         </div>
 
-        {/* Nút Xóa tất cả */}
         <div className="mb-6 flex justify-end">
           <button
             onClick={handleDeleteAllNotes}
@@ -773,7 +1010,6 @@ export default function App() {
           </button>
         </div>
 
-        {/* Nút Sắp xếp */}
         <div className="mb-6 flex justify-end">
           <button
             onClick={handleSortAZ}
@@ -785,11 +1021,8 @@ export default function App() {
 
         {showDeleteModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]">
-            {console.log("Modal is rendering")}
             <div className="bg-white p-6 rounded-lg shadow-lg max-w-sm w-full">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                Xác nhận xóa
-              </h3>
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Xác nhận xóa</h3>
               <p className="text-gray-600 mb-6">
                 Bạn có chắc chắn muốn xóa từ "{noteToDelete?.word || noteToDelete?.structure}" không?
               </p>
@@ -815,7 +1048,11 @@ export default function App() {
           </div>
         )}
 
-        <main className="bg-white rounded-xl shadow-md overflow-hidden p-6">
+        <main
+          className={`bg-white rounded-xl shadow-md overflow-hidden p-6 ${
+            currentTab === "ngữ pháp" ? "md:max-w-4xl px-8" : "max-w-md"
+          } mx-auto`}
+        >
           <ul className="space-y-3">
             {filteredNotes.length > 0 ? (
               filteredNotes.map((note) => (
@@ -833,9 +1070,7 @@ export default function App() {
                 />
               ))
             ) : (
-              <li className="text-gray-500 italic text-center py-4">
-                Không có ghi chú nào.
-              </li>
+              <li className="text-gray-500 italic text-center py-4">Không có ghi chú nào.</li>
             )}
           </ul>
         </main>
