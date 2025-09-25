@@ -9,10 +9,10 @@ import {
   query,
   writeBatch,
   onSnapshot,
-  getDoc,
+  getDoc
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { db, storage } from "./firebase"; // Đường dẫn đến file firebase.js
+import { db, storage } from "./firebase"; // Đường dẫn đến file firebase.js, chỉ cần db và storage
 
 // Hàm loại bỏ dấu tiếng Việt
 const removeVietnameseTones = (str) => {
@@ -35,6 +35,61 @@ const speakText = (text) => {
   window.speechSynthesis.speak(utterance);
 };
 
+const NoteItem = ({ note, currentTab, searchTerm, speakText, highlightKeyword, handleFilterByTag, handleEditNote, setNoteToDelete, setShowDeleteModal }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  return (
+    <li
+      key={note.id}
+      className="flex justify-between items-start bg-gray-50 p-3 rounded-md transition-all duration-200 hover:bg-white hover:shadow-md hover:scale-[1.02]"
+    >
+      {/* Cột trái: Từ + Nghĩa + Giải thích */}
+      <div className="flex-1 pr-4">
+        <span>{highlightKeyword(`${note.word}: ${note.meaning}`, searchTerm)}</span>
+        {note.exampleOrExplanation && (
+          <p className="text-sm italic text-blue-500 mt-1 mb-0">
+            {note.exampleOrExplanation}
+          </p>
+        )}
+        {currentTab === "ngữ pháp" && isExpanded && (
+          <div className="mt-2">
+            <p className="text-sm italic text-blue-500 mt-1 mb-0">
+              {note.exampleOrExplanation}
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Cột phải: Nút Sửa / Xóa / Phát âm */}
+      <div className="flex flex-col gap-1">
+        <button
+          onClick={() => speakText(note.word)}
+          className="text-sm text-indigo-600 hover:text-indigo-800 transition-colors"
+          title="Phát âm"
+        >
+          🔊
+        </button>
+        <button
+          onClick={() => handleEditNote(note)}
+          className="text-sm text-blue-600 hover:text-blue-800 hover:underline transition-colors"
+        >
+          Sửa
+        </button>
+        <button
+          onClick={() => {
+            setNoteToDelete(note);
+            setShowDeleteModal(true);
+            console.log("showDeleteModal:", true);
+          }}
+          className="text-sm text-red-600 hover:text-red-800 hover:underline transition-colors"
+        >
+          Xóa
+        </button>
+      </div>
+    </li>
+  );
+};
+
 export default function App() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [noteToDelete, setNoteToDelete] = useState(null);
@@ -48,13 +103,6 @@ export default function App() {
   const [isEditing, setIsEditing] = useState(false);
   const [notification, setNotification] = useState("");
   const [exampleOrExplanation, setExampleOrExplanation] = useState("");
-  const [structure, setStructure] = useState("");
-  const [examples, setExamples] = useState("");
-  const [topic, setTopic] = useState("");
-  const [hashtags, setHashtags] = useState("");
-  const [availableTopics, setAvailableTopics] = useState(["tenses", "conditionals", "modals", "passive voice"]);
-  const [newTopic, setNewTopic] = useState("");
-  const [isManagingTopics, setIsManagingTopics] = useState(false);
   const [translateInput, setTranslateInput] = useState("");
   const [translateResult, setTranslateResult] = useState("");
 
@@ -69,7 +117,7 @@ export default function App() {
     return unsubscribe;
   }, []);
 
-  // Hàm gọi Google Translate API
+  // Hàm gọi Google Translate API (giả lập)
   const handleTranslate = async (sourceLang, targetLang) => {
     if (!translateInput.trim()) return;
 
@@ -84,240 +132,68 @@ export default function App() {
     }
   };
 
-  // Hàm thêm chủ đề mới
-  const handleAddTopic = () => {
-    if (newTopic.trim() && !availableTopics.includes(newTopic.trim())) {
-      setAvailableTopics([...availableTopics, newTopic.trim()]);
-      setNewTopic("");
-      setNotification("Chủ đề mới đã được thêm thành công!");
-      setTimeout(() => setNotification(""), 3000);
-    } else if (availableTopics.includes(newTopic.trim())) {
-      setNotification("Chủ đề này đã tồn tại!");
-      setTimeout(() => setNotification(""), 3000);
-    }
-  };
-
-  // Hàm xóa chủ đề
-  const handleRemoveTopic = (topicToRemove) => {
-    setAvailableTopics(availableTopics.filter((t) => t !== topicToRemove));
-    if (topic === topicToRemove) setTopic("");
-    setNotification("Chủ đề đã được xóa!");
-    setTimeout(() => setNotification(""), 3000);
-  };
-
-  // Hàm thêm từ vựng
-  const handleAddVocabulary = async () => {
+  // Hàm thêm ghi chú mới
+  const handleAddNote = async () => {
     if (!newWord.trim() || !newMeaning.trim()) return;
 
     try {
       const notesRef = collection(db, "test");
-      const noteData = {
-        type: "từ vựng",
-        word: newWord.trim(),
-        meaning: newMeaning.trim(),
-        exampleOrExplanation: exampleOrExplanation.trim() || "",
-        addedDate: new Date().toISOString(),
-      };
-
-      await addDoc(notesRef, noteData);
+      await addDoc(notesRef, {
+        type: currentTab,
+        word: newWord,
+        meaning: newMeaning,
+        exampleOrExplanation: exampleOrExplanation.trim(),
+        addedDate: new Date().toISOString()
+      });
       setNotification(`Từ "${newWord}" đã được thêm vào Note`);
       setTimeout(() => setNotification(""), 3000);
       setNewWord("");
       setNewMeaning("");
       setExampleOrExplanation("");
     } catch (error) {
-      console.error("Error adding vocabulary:", error);
+      console.error("Error adding note:", error);
     }
   };
 
-  // Hàm thêm ngữ pháp
-  const handleAddGrammar = async () => {
-    if (!structure.trim() || !newMeaning.trim() || !topic.trim()) return;
-
-    try {
-      const notesRef = collection(db, "test");
-      const noteData = {
-        type: "ngữ pháp",
-        structure: structure.trim(),
-        explanation: newMeaning.trim(),
-        examples: examples.trim().split("\n").filter((ex) => ex.trim()),
-        topic: topic.trim(),
-        hashtags: hashtags.trim().split(",").map((tag) => tag.trim()).filter((tag) => tag),
-        addedDate: new Date().toISOString(),
-      };
-
-      await addDoc(notesRef, noteData);
-      setNotification(`Quy tắc "${structure}" đã được thêm vào Note`);
-      setTimeout(() => setNotification(""), 3000);
-      setStructure("");
-      setNewMeaning("");
-      setExamples("");
-      setTopic("");
-      setHashtags("");
-    } catch (error) {
-      console.error("Error adding grammar:", error);
-    }
-  };
-
-  // Hàm thêm thành ngữ
-  const handleAddIdiom = async () => {
-    if (!newWord.trim() || !newMeaning.trim()) return;
-
-    try {
-      const notesRef = collection(db, "test");
-      const noteData = {
-        type: "thành ngữ",
-        word: newWord.trim(),
-        meaning: newMeaning.trim(),
-        exampleOrExplanation: exampleOrExplanation.trim() || "",
-        addedDate: new Date().toISOString(),
-      };
-
-      await addDoc(notesRef, noteData);
-      setNotification(`Thành ngữ "${newWord}" đã được thêm vào Note`);
-      setTimeout(() => setNotification(""), 3000);
-      setNewWord("");
-      setNewMeaning("");
-      setExampleOrExplanation("");
-    } catch (error) {
-      console.error("Error adding idiom:", error);
-    }
-  };
-
-  // Hàm xóa note
+  // Hàm xóa một note
   const handleDeleteNote = async (id) => {
     try {
       const noteRef = doc(db, "test", id);
       await deleteDoc(noteRef);
-      setNotification("Đã xóa ghi chú thành công!");
+      setNotification("Đã xóa từ thành công!");
       setTimeout(() => setNotification(""), 3000);
     } catch (error) {
       console.error("Error deleting note:", error);
     }
   };
 
-  // Hàm chỉnh sửa từ vựng
-  const handleEditVocabulary = async () => {
-    if (!editingNote) return;
-
-    try {
-      const noteRef = doc(db, "test", editingNote.id);
-      const docSnap = await getDoc(noteRef);
-      if (docSnap.exists()) {
-        const updateData = {
-          word: newWord.trim() || editingNote.word,
-          meaning: newMeaning.trim() || editingNote.meaning,
-          type: "từ vựng",
-          addedDate: editingNote.addedDate,
-          exampleOrExplanation: exampleOrExplanation.trim() || "",
-        };
-
-        await updateDoc(noteRef, updateData);
-        const updatedNotes = notes.map((note) =>
-          note.id === editingNote.id ? { ...note, ...updateData } : note
-        );
-        setNotes(updatedNotes);
-        setNotification(`Từ "${newWord || editingNote.word}" đã được cập nhật thành công`);
-      } else {
-        setNotification("Lỗi: Tài liệu không tồn tại trong Firestore!");
-      }
-      setTimeout(() => setNotification(""), 3000);
-      setEditingNote(null);
-      setIsEditing(false);
-      setNewWord("");
-      setNewMeaning("");
-      setExampleOrExplanation("");
-    } catch (error) {
-      console.error("Error updating vocabulary:", error.message);
-      setNotification("Lỗi khi cập nhật từ vựng! Chi tiết: " + error.message);
-      setTimeout(() => setNotification(""), 3000);
-    }
+  // Hàm chỉnh sửa note
+  const handleEditNote = (note) => {
+    setEditingNote(note);
+    setIsEditing(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // Hàm chỉnh sửa ngữ pháp
-  // Hàm chỉnh sửa ngữ pháp
-    const handleEditGrammar = async () => {
-      if (!editingNote) return;
-    
-      try {
-        const noteRef = doc(db, "test", editingNote.id);
-        const docSnap = await getDoc(noteRef);
-        if (docSnap.exists()) {
-          const trimmedTopic = topic.trim();
-          if (!trimmedTopic) {
-            setNotification("Vui lòng chọn hoặc nhập một chủ đề (topic) trước khi lưu!");
-            setTimeout(() => setNotification(""), 3000);
-            return;
-          }
-    
-          const updateData = {
-            structure: structure.trim() || editingNote.structure,
-            explanation: newMeaning.trim() || editingNote.explanation,
-            examples: examples.trim().split("\n").filter((ex) => ex.trim()) || editingNote.examples,
-            topic: trimmedTopic || editingNote.topic,
-            hashtags: hashtags.trim().split(",").map((tag) => tag.trim()).filter((tag) => tag) || editingNote.hashtags,
-            type: "ngữ pháp",
-            addedDate: editingNote.addedDate,
-          };
-    
-          await updateDoc(noteRef, updateData);
-          const updatedNotes = notes.map((note) =>
-            note.id === editingNote.id ? { ...note, ...updateData } : note
-          );
-          setNotes(updatedNotes);
-          setNotification(`Quy tắc "${structure || editingNote.structure}" đã được cập nhật thành công`);
-        } else {
-          setNotification("Lỗi: Tài liệu không tồn tại trong Firestore!");
-        }
-        setTimeout(() => setNotification(""), 3000);
-        setEditingNote(null);
-        setIsEditing(false);
-        setStructure("");
-        setNewMeaning("");
-        setExamples("");
-        setTopic("");
-        setHashtags("");
-      } catch (error) {
-        console.error("Error updating grammar:", error.message);
-        setNotification("Lỗi khi cập nhật ngữ pháp! Chi tiết: " + error.message);
-        setTimeout(() => setNotification(""), 3000);
-      }
-    };
-
-  // Hàm chỉnh sửa thành ngữ
-  const handleEditIdiom = async () => {
+  // Hàm lưu thay đổi khi chỉnh sửa
+  const handleSaveEdit = async () => {
     if (!editingNote) return;
 
     try {
       const noteRef = doc(db, "test", editingNote.id);
-      const docSnap = await getDoc(noteRef);
-      if (docSnap.exists()) {
-        const updateData = {
-          word: newWord.trim() || editingNote.word,
-          meaning: newMeaning.trim() || editingNote.meaning,
-          type: "thành ngữ",
-          addedDate: editingNote.addedDate,
-          exampleOrExplanation: exampleOrExplanation.trim() || "",
-        };
-
-        await updateDoc(noteRef, updateData);
-        const updatedNotes = notes.map((note) =>
-          note.id === editingNote.id ? { ...note, ...updateData } : note
-        );
-        setNotes(updatedNotes);
-        setNotification(`Thành ngữ "${newWord || editingNote.word}" đã được cập nhật thành công`);
-      } else {
-        setNotification("Lỗi: Tài liệu không tồn tại trong Firestore!");
-      }
+      await updateDoc(noteRef, {
+        word: newWord,
+        meaning: newMeaning,
+        exampleOrExplanation: exampleOrExplanation.trim(),
+        type: editingNote.type,
+        addedDate: editingNote.addedDate
+      });
+      setNotification(`Từ "${newWord}" đã được cập nhật thành công`);
       setTimeout(() => setNotification(""), 3000);
       setEditingNote(null);
       setIsEditing(false);
-      setNewWord("");
-      setNewMeaning("");
-      setExampleOrExplanation("");
     } catch (error) {
-      console.error("Error updating idiom:", error.message);
-      setNotification("Lỗi khi cập nhật thành ngữ! Chi tiết: " + error.message);
+      console.error("Error updating note:", error);
+      setNotification("Lỗi khi cập nhật ghi chú! Chi tiết: " + error.message);
       setTimeout(() => setNotification(""), 3000);
     }
   };
@@ -329,11 +205,9 @@ export default function App() {
     try {
       const notesRef = collection(db, "test");
       const querySnapshot = await getDocs(notesRef);
-      const batch = writeBatch(db);
-      querySnapshot.forEach((docSnapshot) => {
-        batch.delete(doc(db, "test", docSnapshot.id));
+      querySnapshot.forEach(async (docSnapshot) => {
+        await deleteDoc(doc(db, "test", docSnapshot.id));
       });
-      await batch.commit();
       setNotification("Đã xóa toàn bộ ghi chú!");
       setTimeout(() => setNotification(""), 3000);
     } catch (error) {
@@ -343,36 +217,29 @@ export default function App() {
     }
   };
 
-  // Hàm sắp xếp A-Z
+  // Hàm sắp xếp từ vựng A-Z
   const handleSortAZ = async () => {
     try {
       const notesRef = collection(db, "test");
       const querySnapshot = await getDocs(notesRef);
       const allNotes = querySnapshot.docs
         .map((doc) => ({ id: doc.id, ...doc.data() }))
-        .filter((note) => (note.word || note.structure) && note.type);
+        .filter((note) => note.word && note.type);
 
-      const notesToSort = allNotes
+      const sortedNotes = allNotes
         .filter((note) => note.type === currentTab)
-        .sort((a, b) => (a.word || a.structure).toLowerCase().localeCompare((b.word || b.structure).toLowerCase()));
+        .sort((a, b) => a.word.toLowerCase().localeCompare(b.word.toLowerCase()));
+
       const otherNotes = allNotes.filter((note) => note.type !== currentTab);
 
       const batch = writeBatch(db);
-      let updatedCount = 0;
-      for (const note of notesToSort) {
+      sortedNotes.forEach((note) => {
         const noteRef = doc(db, "test", note.id);
-        const docSnap = await getDoc(noteRef);
-        if (docSnap.exists()) {
-          batch.update(noteRef, note);
-          updatedCount++;
-        } else {
-          console.warn(`Document ${note.id} not found, skipping update`);
-        }
-      }
+        batch.update(noteRef, note);
+      });
+      await batch.commit();
 
-      if (updatedCount > 0) await batch.commit();
-
-      setNotes([...notesToSort, ...otherNotes]);
+      setNotes([...sortedNotes, ...otherNotes]);
       setNotification(`✅ Đã sắp xếp "${currentTab}" theo thứ tự A-Z`);
       setTimeout(() => setNotification(""), 3000);
     } catch (error) {
@@ -401,7 +268,7 @@ export default function App() {
               const newDocRef = doc(notesRef);
               batch.set(newDocRef, {
                 ...note,
-                addedDate: new Date().toISOString(),
+                addedDate: new Date().toISOString()
               });
             });
 
@@ -422,15 +289,12 @@ export default function App() {
           lines.forEach((line) => {
             line = line.trim();
             if (line.includes("|")) {
-              const [wordOrStructure, meaningOrExplanation, type, topic, tags] = line.split("|").map(s => s.trim());
+              const [word, meaning, type] = line.split("|").map(s => s.trim());
               importedNotes.push({
-                [type === "ngữ pháp" ? "structure" : "word"]: wordOrStructure,
-                [type === "ngữ pháp" ? "explanation" : "meaning"]: meaningOrExplanation,
+                word,
+                meaning,
                 type: type || currentTab,
-                [type === "ngữ pháp" ? "topic" : ""]: topic || "",
-                [type === "ngữ pháp" ? "hashtags" : ""]: tags ? tags.split(",").map(t => t.trim()) : [],
-                exampleOrExplanation: type !== "ngữ pháp" ? "" : undefined,
-                addedDate: new Date().toISOString(),
+                addedDate: new Date().toISOString()
               });
             }
           });
@@ -444,7 +308,7 @@ export default function App() {
           });
 
           await batch.commit();
-          setNotification(`Đã nhập ${importedNotes.length} ghi chú thành công!`);
+          setNotification(`Đã nhập ${importedNotes.length} từ thành công!`);
           setTimeout(() => setNotification(""), 3000);
         };
         reader.readAsText(file);
@@ -463,7 +327,7 @@ export default function App() {
   const handleExportTXT = async () => {
     try {
       const content = notes
-        .map((note) => `${note.word || note.structure} | ${note.meaning || note.explanation} | ${note.type} | ${note.topic || ""} | ${note.hashtags?.join(", ") || ""}`)
+        .map((note) => `${note.word} | ${note.meaning} | ${note.type}`)
         .join("\n");
 
       const blob = new Blob([content], { type: "text/plain" });
@@ -482,18 +346,13 @@ export default function App() {
     }
   };
 
-  // Hàm filter theo tag
-  const handleFilterByTag = (tag) => {
-    setSearchTerm(tag);
-  };
-
   const filteredNotes = notes
     .filter((note) => note.type === currentTab)
     .filter((note) => {
-      const noteContent = `${note.word || note.structure} ${note.meaning || note.explanation}`.toLowerCase();
+      const noteContent = `${note.word} ${note.meaning}`.toLowerCase();
       const keyword = removeVietnameseTones(searchTerm).toLowerCase();
       const normalizedNote = removeVietnameseTones(noteContent).toLowerCase();
-      return normalizedNote.includes(keyword) || (note.hashtags && note.hashtags.some((ht) => removeVietnameseTones(ht).toLowerCase().includes(keyword)));
+      return normalizedNote.includes(keyword);
     });
 
   const highlightKeyword = (text, keyword) => {
@@ -516,13 +375,11 @@ export default function App() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6 font-sans text-gray-800">
       <div className="max-w-md mx-auto">
-        {/* Header */}
         <header className="text-center mb-8">
           <h1 className="text-4xl font-bold text-indigo-700">Ghi Chú Tiếng Anh</h1>
           <p className="text-gray-600 mt-2">Ghi chú từ vựng, ngữ pháp, thành ngữ...</p>
         </header>
 
-        {/* Tabs */}
         <nav className="mb-4">
           <ul className="flex space-x-4 justify-center">
             {types.map((type) => (
@@ -542,15 +399,16 @@ export default function App() {
           </ul>
         </nav>
 
-        {/* Google Dịch */}
         <div className="mb-6">
           <h2 className="text-lg font-semibold text-gray-700 mb-3">Google Dịch</h2>
+          
           <textarea
             value={translateInput}
             onChange={(e) => setTranslateInput(e.target.value)}
             placeholder="Nhập từ hoặc câu cần dịch..."
             className="w-full h-24 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
           />
+      
           <div className="mt-4 flex gap-3">
             <button
               onClick={() => handleTranslate("en", "vi")}
@@ -565,6 +423,7 @@ export default function App() {
               VN → EN
             </button>
           </div>
+      
           {translateResult && (
             <div className="mt-4 p-4 bg-gray-50 rounded-md">
               <p className="font-medium">Kết quả:</p>
@@ -580,7 +439,6 @@ export default function App() {
           )}
         </div>
 
-        {/* Ô tìm kiếm */}
         <div className="max-w-2xl mx-auto mb-6">
           <input
             type="text"
@@ -591,301 +449,297 @@ export default function App() {
           />
         </div>
 
-        {/* Thông báo */}
         {notification && (
           <div className="max-w-2xl mx-auto mb-4 p-3 bg-green-100 text-green-800 text-sm rounded-md text-center">
             {notification}
           </div>
         )}
 
-        {/* Form nhập ghi chú mới */}
         {isEditing ? (
-            <div className="mb-6">
-              <div className="mb-2">
-                <input
-                  type="text"
-                  placeholder={currentTab === "ngữ pháp" ? "Nhập cấu trúc (e.g., S + V + O)..." : "Nhập từ tiếng Anh..."}
-                  value={currentTab === "ngữ pháp" ? structure : newWord}
-                  onChange={(e) =>
-                    currentTab === "ngữ pháp" ? setStructure(e.target.value) : setNewWord(e.target.value)
-                  }
-                  className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm"
-                />
-              </div>
-              <div className="mb-2">
-                {currentTab === "ngữ pháp" && (
-                  <div>
-                    <select
-                      value={topic}
-                      onChange={(e) => setTopic(e.target.value)}
-                      className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm mb-2"
-                    >
-                      <option value="">Chọn chủ đề</option>
-                      {availableTopics.map((t) => (
-                        <option key={t} value={t}>{t}</option>
-                      ))}
-                    </select>
-                    {isManagingTopics ? (
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={newTopic}
-                          onChange={(e) => setNewTopic(e.target.value)}
-                          placeholder="Nhập chủ đề mới..."
-                          className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm"
-                        />
-                        <button
-                          onClick={handleAddTopic}
-                          className="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-sm"
-                        >
-                          Thêm
-                        </button>
-                        <button
-                          onClick={() => setIsManagingTopics(false)}
-                          className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-2 py-1 rounded text-sm"
-                        >
-                          Hủy
-                        </button>
-                      </div>
-                    ) : (
+          <div className="mb-6">
+            <div className="mb-2">
+              <input
+                type="text"
+                placeholder={currentTab === "ngữ pháp" ? "Nhập cấu trúc (e.g., S + V + O)..." : "Nhập từ tiếng Anh..."}
+                value={currentTab === "ngữ pháp" ? structure : newWord}
+                onChange={(e) =>
+                  currentTab === "ngữ pháp" ? setStructure(e.target.value) : setNewWord(e.target.value)
+                }
+                className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm"
+              />
+            </div>
+            <div className="mb-2">
+              {currentTab === "ngữ pháp" && (
+                <div>
+                  <select
+                    value={topic}
+                    onChange={(e) => setTopic(e.target.value)}
+                    className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm mb-2"
+                  >
+                    <option value="">Chọn chủ đề</option>
+                    {availableTopics.map((t) => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+                  {isManagingTopics ? (
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={newTopic}
+                        onChange={(e) => setNewTopic(e.target.value)}
+                        placeholder="Nhập chủ đề mới..."
+                        className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm"
+                      />
                       <button
-                        onClick={() => setIsManagingTopics(true)}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm mt-2"
+                        onClick={handleAddTopic}
+                        className="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-sm"
                       >
-                        Quản lý chủ đề
+                        Thêm
                       </button>
-                    )}
-                    {availableTopics.length > 0 && isManagingTopics && (
-                      <div className="mt-2">
-                        {availableTopics.map((t) => (
-                          <span
-                            key={t}
-                            className="inline-block bg-gray-200 text-gray-800 px-2 py-1 rounded-full mr-2 mb-2 cursor-pointer hover:bg-gray-300"
-                            onClick={() => handleRemoveTopic(t)}
-                          >
-                            {t} ✕
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
+                      <button
+                        onClick={() => setIsManagingTopics(false)}
+                        className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-2 py-1 rounded text-sm"
+                      >
+                        Hủy
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setIsManagingTopics(true)}
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm mt-2"
+                    >
+                      Quản lý chủ đề
+                    </button>
+                  )}
+                  {availableTopics.length > 0 && isManagingTopics && (
+                    <div className="mt-2">
+                      {availableTopics.map((t) => (
+                        <span
+                          key={t}
+                          className="inline-block bg-gray-200 text-gray-800 px-2 py-1 rounded-full mr-2 mb-2 cursor-pointer hover:bg-gray-300"
+                          onClick={() => handleRemoveTopic(t)}
+                        >
+                          {t} ✕
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            <div className="mb-4">
+              <textarea
+                placeholder={currentTab === "ngữ pháp" ? "Nhập giải thích..." : "Nhập nghĩa tiếng Việt..."}
+                value={newMeaning}
+                onChange={(e) => setNewMeaning(e.target.value)}
+                className="w-full h-24 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm"
+              />
+            </div>
+            {currentTab === "ngữ pháp" && (
               <div className="mb-4">
                 <textarea
-                  placeholder={currentTab === "ngữ pháp" ? "Nhập giải thích..." : "Nhập nghĩa tiếng Việt..."}
-                  value={newMeaning}
-                  onChange={(e) => setNewMeaning(e.target.value)}
+                  placeholder="Nhập ví dụ (mỗi dòng một ví dụ, e.g., I + eat + apple)"
+                  value={examples}
+                  onChange={(e) => setExamples(e.target.value)}
                   className="w-full h-24 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm"
                 />
               </div>
-              {currentTab === "ngữ pháp" && (
-                <div className="mb-4">
-                  <textarea
-                    placeholder="Nhập ví dụ (mỗi dòng một ví dụ, e.g., I + eat + apple)"
-                    value={examples}
-                    onChange={(e) => setExamples(e.target.value)}
-                    className="w-full h-24 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm"
-                  />
-                </div>
-              )}
-              {currentTab === "ngữ pháp" && (
-                <div className="mb-4">
-                  <textarea
-                    placeholder="Nhập hashtag (tách bằng dấu phẩy, e.g., simple past, irregular verbs)"
-                    value={hashtags}
-                    onChange={(e) => setHashtags(e.target.value)}
-                    className="w-full h-12 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm"
-                  />
-                </div>
-              )}
-              {currentTab !== "ngữ pháp" && (
-                <div className="mb-4">
-                  <textarea
-                    placeholder="Nhập ví dụ hoặc giải thích thêm (tùy chọn)..."
-                    value={exampleOrExplanation}
-                    onChange={(e) => setExampleOrExplanation(e.target.value)}
-                    className="w-full h-24 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm"
-                  />
-                </div>
-              )}
-              <div className="flex gap-2 mt-2">
-                <button
-                  onClick={() => {
-                    if (currentTab === "từ vựng") handleEditVocabulary();
-                    else if (currentTab === "ngữ pháp") handleEditGrammar();
-                    else if (currentTab === "thành ngữ") handleEditIdiom();
-                  }}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded transition text-sm"
-                >
-                  Lưu
-                </button>
-                <button
-                  onClick={() => {
-                    if (currentTab === "ngữ pháp") {
-                      setStructure("");
-                      setNewMeaning("");
-                      setExamples("");
-                      setTopic("");
-                      setHashtags("");
-                    } else {
-                      setNewWord("");
-                      setNewMeaning("");
-                      setExampleOrExplanation("");
-                    }
-                    setIsEditing(false);
-                    setEditingNote(null);
-                  }}
-                  className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded transition text-sm"
-                >
-                  Xóa các trường
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="mb-6">
-              <div className="mb-2">
-                <input
-                  type="text"
-                  placeholder={currentTab === "ngữ pháp" ? "Nhập cấu trúc (e.g., S + V + O)..." : "Nhập từ tiếng Anh..."}
-                  value={currentTab === "ngữ pháp" ? structure : newWord}
-                  onChange={(e) =>
-                    currentTab === "ngữ pháp" ? setStructure(e.target.value) : setNewWord(e.target.value)
-                  }
-                  className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                />
-              </div>
-              <div className="mb-2">
-                {currentTab === "ngữ pháp" && (
-                  <div>
-                    <select
-                      value={topic}
-                      onChange={(e) => setTopic(e.target.value)}
-                      className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm mb-2"
-                    >
-                      <option value="">Chọn chủ đề</option>
-                      {availableTopics.map((t) => (
-                        <option key={t} value={t}>{t}</option>
-                      ))}
-                    </select>
-                    {isManagingTopics ? (
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={newTopic}
-                          onChange={(e) => setNewTopic(e.target.value)}
-                          placeholder="Nhập chủ đề mới..."
-                          className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm"
-                        />
-                        <button
-                          onClick={handleAddTopic}
-                          className="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-sm"
-                        >
-                          Thêm
-                        </button>
-                        <button
-                          onClick={() => setIsManagingTopics(false)}
-                          className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-2 py-1 rounded text-sm"
-                        >
-                          Hủy
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => setIsManagingTopics(true)}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm mt-2"
-                      >
-                        Quản lý chủ đề
-                      </button>
-                    )}
-                    {availableTopics.length > 0 && isManagingTopics && (
-                      <div className="mt-2">
-                        {availableTopics.map((t) => (
-                          <span
-                            key={t}
-                            className="inline-block bg-gray-200 text-gray-800 px-2 py-1 rounded-full mr-2 mb-2 cursor-pointer hover:bg-gray-300"
-                            onClick={() => handleRemoveTopic(t)}
-                          >
-                            {t} ✕
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
+            )}
+            {currentTab === "ngữ pháp" && (
               <div className="mb-4">
                 <textarea
-                  placeholder={currentTab === "ngữ pháp" ? "Nhập giải thích..." : "Nhập nghĩa tiếng Việt..."}
-                  value={newMeaning}
-                  onChange={(e) => setNewMeaning(e.target.value)}
+                  placeholder="Nhập hashtag (tách bằng dấu phẩy, e.g., simple past, irregular verbs)"
+                  value={hashtags}
+                  onChange={(e) => setHashtags(e.target.value)}
+                  className="w-full h-12 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm"
+                />
+              </div>
+            )}
+            {currentTab !== "ngữ pháp" && (
+              <div className="mb-4">
+                <textarea
+                  placeholder="Nhập ví dụ hoặc giải thích thêm (tùy chọn)..."
+                  value={exampleOrExplanation}
+                  onChange={(e) => setExampleOrExplanation(e.target.value)}
+                  className="w-full h-24 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm"
+                />
+              </div>
+            )}
+            <div className="flex gap-2 mt-2">
+              <button
+                onClick={() => {
+                  if (currentTab === "từ vựng") handleEditVocabulary();
+                  else if (currentTab === "ngữ pháp") handleEditGrammar();
+                  else if (currentTab === "thành ngữ") handleEditIdiom();
+                }}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded transition text-sm"
+              >
+                Lưu
+              </button>
+              <button
+                onClick={() => {
+                  if (currentTab === "ngữ pháp") {
+                    setStructure("");
+                    setNewMeaning("");
+                    setExamples("");
+                    setTopic("");
+                    setHashtags("");
+                  } else {
+                    setNewWord("");
+                    setNewMeaning("");
+                    setExampleOrExplanation("");
+                  }
+                  setIsEditing(false);
+                  setEditingNote(null);
+                }}
+                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded transition text-sm"
+              >
+                Xóa các trường
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="mb-6">
+            <div className="mb-2">
+              <input
+                type="text"
+                placeholder={currentTab === "ngữ pháp" ? "Nhập cấu trúc (e.g., S + V + O)..." : "Nhập từ tiếng Anh..."}
+                value={currentTab === "ngữ pháp" ? structure : newWord}
+                onChange={(e) =>
+                  currentTab === "ngữ pháp" ? setStructure(e.target.value) : setNewWord(e.target.value)
+                }
+                className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              />
+            </div>
+            <div className="mb-2">
+              {currentTab === "ngữ pháp" && (
+                <div>
+                  <select
+                    value={topic}
+                    onChange={(e) => setTopic(e.target.value)}
+                    className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm mb-2"
+                  >
+                    <option value="">Chọn chủ đề</option>
+                    {availableTopics.map((t) => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+                  {isManagingTopics ? (
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={newTopic}
+                        onChange={(e) => setNewTopic(e.target.value)}
+                        placeholder="Nhập chủ đề mới..."
+                        className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm"
+                      />
+                      <button
+                        onClick={handleAddTopic}
+                        className="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-sm"
+                      >
+                        Thêm
+                      </button>
+                      <button
+                        onClick={() => setIsManagingTopics(false)}
+                        className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-2 py-1 rounded text-sm"
+                      >
+                        Hủy
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setIsManagingTopics(true)}
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm mt-2"
+                    >
+                      Quản lý chủ đề
+                    </button>
+                  )}
+                  {availableTopics.length > 0 && isManagingTopics && (
+                    <div className="mt-2">
+                      {availableTopics.map((t) => (
+                        <span
+                          key={t}
+                          className="inline-block bg-gray-200 text-gray-800 px-2 py-1 rounded-full mr-2 mb-2 cursor-pointer hover:bg-gray-300"
+                          onClick={() => handleRemoveTopic(t)}
+                        >
+                          {t} ✕
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            <div className="mb-4">
+              <textarea
+                placeholder={currentTab === "ngữ pháp" ? "Nhập giải thích..." : "Nhập nghĩa tiếng Việt..."}
+                value={newMeaning}
+                onChange={(e) => setNewMeaning(e.target.value)}
+                className="w-full h-24 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              />
+            </div>
+            {currentTab === "ngữ pháp" && (
+              <div className="mb-4">
+                <textarea
+                  placeholder="Nhập ví dụ (mỗi dòng một ví dụ, e.g., I + eat + apple)"
+                  value={examples}
+                  onChange={(e) => setExamples(e.target.value)}
                   className="w-full h-24 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
                 />
               </div>
-              {currentTab === "ngữ pháp" && (
-                <div className="mb-4">
-                  <textarea
-                    placeholder="Nhập ví dụ (mỗi dòng một ví dụ, e.g., I + eat + apple)"
-                    value={examples}
-                    onChange={(e) => setExamples(e.target.value)}
-                    className="w-full h-24 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                  />
-                </div>
-              )}
-              {currentTab === "ngữ pháp" && (
-                <div className="mb-4">
-                  <textarea
-                    placeholder="Nhập hashtag (tách bằng dấu phẩy, e.g., simple past, irregular verbs)"
-                    value={hashtags}
-                    onChange={(e) => setHashtags(e.target.value)}
-                    className="w-full h-12 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                  />
-                </div>
-              )}
-              {currentTab !== "ngữ pháp" && (
-                <div className="mb-4">
-                  <textarea
-                    placeholder="Nhập ví dụ hoặc giải thích thêm (tùy chọn)..."
-                    value={exampleOrExplanation}
-                    onChange={(e) => setExampleOrExplanation(e.target.value)}
-                    className="w-full h-24 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                  />
-                </div>
-              )}
-              <div className="flex gap-2 mt-2">
-                <button
-                  onClick={() => {
-                    if (currentTab === "từ vựng") handleAddVocabulary();
-                    else if (currentTab === "ngữ pháp") handleAddGrammar();
-                    else if (currentTab === "thành ngữ") handleAddIdiom();
-                  }}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded transition"
-                >
-                  Lưu
-                </button>
-                <button
-                  onClick={() => {
-                    if (currentTab === "ngữ pháp") {
-                      setStructure("");
-                      setNewMeaning("");
-                      setExamples("");
-                      setTopic("");
-                      setHashtags("");
-                    } else {
-                      setNewWord("");
-                      setNewMeaning("");
-                      setExampleOrExplanation("");
-                    }
-                    setIsEditing(false);
-                    setEditingNote(null);
-                  }}
-                  className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded transition"
-                >
-                  Xóa các trường
-                </button>
+            )}
+            {currentTab === "ngữ pháp" && (
+              <div className="mb-4">
+                <textarea
+                  placeholder="Nhập hashtag (tách bằng dấu phẩy, e.g., simple past, irregular verbs)"
+                  value={hashtags}
+                  onChange={(e) => setHashtags(e.target.value)}
+                  className="w-full h-12 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                />
               </div>
+            )}
+            {currentTab !== "ngữ pháp" && (
+              <div className="mb-4">
+                <textarea
+                  placeholder="Nhập ví dụ hoặc giải thích thêm (tùy chọn)..."
+                  value={exampleOrExplanation}
+                  onChange={(e) => setExampleOrExplanation(e.target.value)}
+                  className="w-full h-24 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                />
+              </div>
+            )}
+            <div className="flex gap-2 mt-2">
+              <button
+                onClick={() => {
+                  if (currentTab === "từ vựng") handleAddVocabulary();
+                  else if (currentTab === "ngữ pháp") handleAddGrammar();
+                  else if (currentTab === "thành ngữ") handleAddIdiom();
+                }}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded transition"
+              >
+                Lưu
+              </button>
+              <button
+                onClick={() => {
+                  if (currentTab === "ngữ pháp") {
+                    setStructure("");
+                    setNewMeaning("");
+                    setExamples("");
+                    setTopic("");
+                    setHashtags("");
+                  } else {
+                    setNewWord("");
+                    setNewMeaning("");
+                    setExampleOrExplanation("");
+                  }
+                }}
+                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded transition"
+              >
+                Xóa các trường
+              </button>
             </div>
-          )}
+          </div>
+        )}
 
         {/* Nút Import/Export */}
         <div className="mb-6 flex flex-wrap gap-2 justify-between">
@@ -898,6 +752,7 @@ export default function App() {
               onChange={handleImportFile}
             />
           </label>
+        
           <div className="flex flex-wrap gap-2">
             <button
               onClick={handleExportTXT}
@@ -930,8 +785,11 @@ export default function App() {
 
         {showDeleteModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]">
+            {console.log("Modal is rendering")}
             <div className="bg-white p-6 rounded-lg shadow-lg max-w-sm w-full">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Xác nhận xóa</h3>
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                Xác nhận xóa
+              </h3>
               <p className="text-gray-600 mb-6">
                 Bạn có chắc chắn muốn xóa từ "{noteToDelete?.word || noteToDelete?.structure}" không?
               </p>
@@ -957,102 +815,27 @@ export default function App() {
           </div>
         )}
 
-        <main
-          className={`bg-white rounded-xl shadow-md overflow-hidden p-6 ${
-            currentTab === "ngữ pháp" ? "md:max-w-4xl px-8" : "max-w-md"
-          } mx-auto`}
-        >
+        <main className="bg-white rounded-xl shadow-md overflow-hidden p-6">
           <ul className="space-y-3">
             {filteredNotes.length > 0 ? (
-              filteredNotes.map((note) => {
-                const [isExpanded, setIsExpanded] = useState(false);
-                return (
-                  <li
-                    key={note.id}
-                    className="flex flex-row justify-between items-center bg-gray-50 p-3 rounded-md transition-all duration-200 hover:bg-white hover:shadow-md hover:scale-[1.02]"
-                  >
-                    <div className="flex-1 pr-4 break-words">
-                      <span>
-                        {highlightKeyword(
-                          `${currentTab === "ngữ pháp" ? note.structure : note.word}: ${
-                            currentTab === "ngữ pháp" ? note.explanation : note.meaning
-                          }`,
-                          searchTerm
-                        )}
-                      </span>
-                      {(currentTab === "ngữ pháp" && isExpanded) || currentTab !== "ngữ pháp" ? (
-                        (currentTab === "ngữ pháp" ? note.examples : [note.exampleOrExplanation])
-                          .filter((ex) => ex)
-                          .map((ex, index) => (
-                            <p key={index} className="text-sm italic text-blue-500 mt-1 mb-0 break-words">
-                              {ex}
-                            </p>
-                          ))
-                      ) : null}
-                    </div>
-                    {currentTab === "ngữ pháp" && note.hashtags && isExpanded && (
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {note.hashtags.map((tag, index) => (
-                          <span
-                            key={index}
-                            onClick={() => handleFilterByTag(tag)}
-                            className="cursor-pointer text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full hover:bg-indigo-200"
-                          >
-                            #{tag}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                    <div className="flex flex-col items-end">
-                      <button
-                        onClick={() => setIsExpanded(!isExpanded)}
-                        className="text-sm text-gray-600 hover:text-gray-800 mb-1"
-                      >
-                        {isExpanded ? "▲ Thu gọn" : "▼ Xem chi tiết"}
-                      </button>
-                      <button
-                        onClick={() => speakText(note.word || note.structure)}
-                        className="text-sm text-indigo-600 hover:text-indigo-800 transition-colors"
-                        title="Phát âm"
-                      >
-                        🔊
-                      </button>
-                      <button
-                        onClick={() => {
-                          setEditingNote(note);
-                          setIsEditing(true);
-                          if (currentTab === "ngữ pháp") {
-                            setStructure(note.structure || "");
-                            setNewMeaning(note.explanation || "");
-                            setExamples((note.examples || []).join("\n"));
-                            setTopic(note.topic || "");
-                            setHashtags((note.hashtags || []).join(", "));
-                          } else {
-                            setNewWord(note.word || "");
-                            setNewMeaning(note.meaning || "");
-                            setExampleOrExplanation(note.exampleOrExplanation || "");
-                          }
-                          window.scrollTo({ top: 0, behavior: "smooth" });
-                        }}
-                        className="text-sm text-blue-600 hover:text-blue-800 hover:underline transition-colors"
-                      >
-                        Sửa
-                      </button>
-                      <button
-                        onClick={() => {
-                          setNoteToDelete(note);
-                          setShowDeleteModal(true);
-                        }}
-                        className="text-sm text-red-600 hover:text-red-800 hover:underline transition-colors"
-                      >
-                        Xóa
-                      </button>
-                    </div>
-                  </li>
-                );
-              })
+              filteredNotes.map((note) => (
+                <NoteItem
+                  key={note.id}
+                  note={note}
+                  currentTab={currentTab}
+                  searchTerm={searchTerm}
+                  speakText={speakText}
+                  highlightKeyword={highlightKeyword}
+                  handleFilterByTag={handleFilterByTag}
+                  handleEditNote={handleEditNote}
+                  setNoteToDelete={setNoteToDelete}
+                  setShowDeleteModal={setShowDeleteModal}
+                />
+              ))
             ) : (
-              <li className="text-gray-500 italic text-center py-4">Không có ghi chú nào.</li>
+              <li className="text-gray-500 italic text-center py-4">
+                Không có ghi chú nào.
+              </li>
             )}
           </ul>
         </main>
