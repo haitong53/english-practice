@@ -198,7 +198,11 @@ export default function App() {
 
   // Hàm thêm từ vựng
   const handleAddVocabulary = async () => {
-    if (!newWord.trim() || !newMeaning.trim()) return;
+    if (!newWord.trim() || !newMeaning.trim()) {
+      setNotification("Vui lòng nhập từ và nghĩa!");
+      setTimeout(() => setNotification(""), 3000);
+      return;
+    }
 
     try {
       const noteData = {
@@ -215,13 +219,18 @@ export default function App() {
       setExampleOrExplanation("");
     } catch (error) {
       console.error("Error adding vocabulary:", error);
+      setNotification("Lỗi khi thêm từ vựng!");
     }
     setTimeout(() => setNotification(""), 3000);
   };
 
   // Hàm thêm ngữ pháp
   const handleAddGrammar = async () => {
-    if (!structure.trim() || !newMeaning.trim() || !topic.trim()) return;
+    if (!structure.trim() || !newMeaning.trim() || !topic.trim()) {
+      setNotification("Vui lòng nhập cấu trúc, giải thích và chọn chủ đề!");
+      setTimeout(() => setNotification(""), 3000);
+      return;
+    }
 
     try {
       const noteData = {
@@ -242,13 +251,18 @@ export default function App() {
       setHashtags("");
     } catch (error) {
       console.error("Error adding grammar:", error);
+      setNotification("Lỗi khi thêm ngữ pháp!");
     }
     setTimeout(() => setNotification(""), 3000);
   };
 
   // Hàm thêm thành ngữ
   const handleAddIdiom = async () => {
-    if (!newWord.trim() || !newMeaning.trim()) return;
+    if (!newWord.trim() || !newMeaning.trim()) {
+      setNotification("Vui lòng nhập thành ngữ và nghĩa!");
+      setTimeout(() => setNotification(""), 3000);
+      return;
+    }
 
     try {
       const noteData = {
@@ -265,126 +279,150 @@ export default function App() {
       setExampleOrExplanation("");
     } catch (error) {
       console.error("Error adding idiom:", error);
+      setNotification("Lỗi khi thêm thành ngữ!");
     }
     setTimeout(() => setNotification(""), 3000);
   };
 
-  // Hàm chỉnh sửa từ vựng
+  // Hàm xử lý chỉnh sửa ghi chú
+  const handleEditNote = (note) => {
+    setEditingNote(note);
+    setIsEditing(true);
+    if (currentTab === "ngữ pháp") {
+      setStructure(note.structure || "");
+      setNewMeaning(note.explanation || "");
+      setExamples((note.examples || []).join("\n"));
+      setTopic(note.topic || "");
+      setHashtags((note.hashtags || []).join(", "));
+    } else {
+      setNewWord(note.word || "");
+      setNewMeaning(note.meaning || "");
+      setExampleOrExplanation(note.exampleOrExplanation || "");
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  // Hàm lưu chỉnh sửa từ vựng
   const handleEditVocabulary = async () => {
     if (!editingNote) return;
 
     try {
       const noteRef = doc(db, "test", editingNote.id);
-      const docSnap = await getDoc(noteRef);
-      if (docSnap.exists()) {
-        const updateData = {
-          word: newWord.trim() || editingNote.word,
-          meaning: newMeaning.trim() || editingNote.meaning,
-          type: "từ vựng",
-          addedDate: editingNote.addedDate,
-          exampleOrExplanation: exampleOrExplanation.trim() || "",
-        };
-        await updateDoc(noteRef, updateData);
-        const updatedNotes = notes.map((note) =>
-          note.id === editingNote.id ? { ...note, ...updateData } : note
-        );
-        setNotes(updatedNotes);
-        setNotification(`Từ "${newWord || editingNote.word}" đã được cập nhật thành công`);
-      } else {
-        setNotification("Lỗi: Tài liệu không tồn tại trong Firestore!");
-      }
+      await updateDoc(noteRef, {
+        word: newWord.trim() || editingNote.word,
+        meaning: newMeaning.trim() || editingNote.meaning,
+        exampleOrExplanation: exampleOrExplanation.trim() || "",
+        type: "từ vựng",
+        addedDate: editingNote.addedDate,
+      });
+      setNotes(
+        notes.map((n) =>
+          n.id === editingNote.id
+            ? {
+                ...n,
+                word: newWord.trim() || n.word,
+                meaning: newMeaning.trim() || n.meaning,
+                exampleOrExplanation: exampleOrExplanation.trim() || "",
+              }
+            : n
+        )
+      );
+      setNotification(`Từ "${newWord || editingNote.word}" đã được cập nhật`);
+      setEditingNote(null);
+      setIsEditing(false);
+      setNewWord("");
+      setNewMeaning("");
+      setExampleOrExplanation("");
     } catch (error) {
-      console.error("Error updating vocabulary:", error.message);
-      setNotification("Lỗi khi cập nhật từ vựng! Chi tiết: " + error.message);
+      console.error("Error updating vocabulary:", error);
+      setNotification("Lỗi khi cập nhật từ vựng!");
     }
-    setEditingNote(null);
-    setIsEditing(false);
-    setNewWord("");
-    setNewMeaning("");
-    setExampleOrExplanation("");
     setTimeout(() => setNotification(""), 3000);
   };
 
-  // Hàm chỉnh sửa ngữ pháp
+  // Hàm lưu chỉnh sửa ngữ pháp
   const handleEditGrammar = async () => {
     if (!editingNote) return;
 
     try {
       const noteRef = doc(db, "test", editingNote.id);
-      const docSnap = await getDoc(noteRef);
-      if (docSnap.exists()) {
-        const trimmedTopic = topic.trim();
-        if (!trimmedTopic) {
-          setNotification("Vui lòng chọn hoặc nhập một chủ đề (topic) trước khi lưu!");
-          setTimeout(() => setNotification(""), 3000);
-          return;
-        }
-        const updateData = {
-          structure: structure.trim() || editingNote.structure,
-          explanation: newMeaning.trim() || editingNote.explanation,
-          examples: examples.trim().split("\n").filter((ex) => ex.trim()) || editingNote.examples,
-          topic: trimmedTopic || editingNote.topic,
-          hashtags:
-            hashtags.trim().split(",").map((tag) => tag.trim()).filter((tag) => tag) || editingNote.hashtags,
-          type: "ngữ pháp",
-          addedDate: editingNote.addedDate,
-        };
-        await updateDoc(noteRef, updateData);
-        const updatedNotes = notes.map((note) =>
-          note.id === editingNote.id ? { ...note, ...updateData } : note
-        );
-        setNotes(updatedNotes);
-        setNotification(`Quy tắc "${structure || editingNote.structure}" đã được cập nhật thành công`);
-      } else {
-        setNotification("Lỗi: Tài liệu không tồn tại trong Firestore!");
-      }
+      await updateDoc(noteRef, {
+        structure: structure.trim() || editingNote.structure,
+        explanation: newMeaning.trim() || editingNote.explanation,
+        examples: examples.trim().split("\n").filter((ex) => ex.trim()) || editingNote.examples,
+        topic: topic.trim() || editingNote.topic,
+        hashtags:
+          hashtags.trim().split(",").map((tag) => tag.trim()).filter((tag) => tag) ||
+          editingNote.hashtags,
+        type: "ngữ pháp",
+        addedDate: editingNote.addedDate,
+      });
+      setNotes(
+        notes.map((n) =>
+          n.id === editingNote.id
+            ? {
+                ...n,
+                structure: structure.trim() || n.structure,
+                explanation: newMeaning.trim() || n.explanation,
+                examples: examples.trim().split("\n").filter((ex) => ex.trim()) || n.examples,
+                topic: topic.trim() || n.topic,
+                hashtags:
+                  hashtags.trim().split(",").map((tag) => tag.trim()).filter((tag) => tag) ||
+                  n.hashtags,
+              }
+            : n
+        )
+      );
+      setNotification(`Quy tắc "${structure || editingNote.structure}" đã được cập nhật`);
+      setEditingNote(null);
+      setIsEditing(false);
+      setStructure("");
+      setNewMeaning("");
+      setExamples("");
+      setTopic("");
+      setHashtags("");
     } catch (error) {
-      console.error("Error updating grammar:", error.message);
-      setNotification("Lỗi khi cập nhật ngữ pháp! Chi tiết: " + error.message);
+      console.error("Error updating grammar:", error);
+      setNotification("Lỗi khi cập nhật ngữ pháp!");
     }
-    setEditingNote(null);
-    setIsEditing(false);
-    setStructure("");
-    setNewMeaning("");
-    setExamples("");
-    setTopic("");
-    setHashtags("");
     setTimeout(() => setNotification(""), 3000);
   };
 
-  // Hàm chỉnh sửa thành ngữ
+  // Hàm lưu chỉnh sửa thành ngữ
   const handleEditIdiom = async () => {
     if (!editingNote) return;
 
     try {
       const noteRef = doc(db, "test", editingNote.id);
-      const docSnap = await getDoc(noteRef);
-      if (docSnap.exists()) {
-        const updateData = {
-          word: newWord.trim() || editingNote.word,
-          meaning: newMeaning.trim() || editingNote.meaning,
-          type: "thành ngữ",
-          addedDate: editingNote.addedDate,
-          exampleOrExplanation: exampleOrExplanation.trim() || "",
-        };
-        await updateDoc(noteRef, updateData);
-        const updatedNotes = notes.map((note) =>
-          note.id === editingNote.id ? { ...note, ...updateData } : note
-        );
-        setNotes(updatedNotes);
-        setNotification(`Thành ngữ "${newWord || editingNote.word}" đã được cập nhật thành công`);
-      } else {
-        setNotification("Lỗi: Tài liệu không tồn tại trong Firestore!");
-      }
+      await updateDoc(noteRef, {
+        word: newWord.trim() || editingNote.word,
+        meaning: newMeaning.trim() || editingNote.meaning,
+        exampleOrExplanation: exampleOrExplanation.trim() || "",
+        type: "thành ngữ",
+        addedDate: editingNote.addedDate,
+      });
+      setNotes(
+        notes.map((n) =>
+          n.id === editingNote.id
+            ? {
+                ...n,
+                word: newWord.trim() || n.word,
+                meaning: newMeaning.trim() || n.meaning,
+                exampleOrExplanation: exampleOrExplanation.trim() || "",
+              }
+            : n
+        )
+      );
+      setNotification(`Thành ngữ "${newWord || editingNote.word}" đã được cập nhật`);
+      setEditingNote(null);
+      setIsEditing(false);
+      setNewWord("");
+      setNewMeaning("");
+      setExampleOrExplanation("");
     } catch (error) {
-      console.error("Error updating idiom:", error.message);
-      setNotification("Lỗi khi cập nhật thành ngữ! Chi tiết: " + error.message);
+      console.error("Error updating idiom:", error);
+      setNotification("Lỗi khi cập nhật thành ngữ!");
     }
-    setEditingNote(null);
-    setIsEditing(false);
-    setNewWord("");
-    setNewMeaning("");
-    setExampleOrExplanation("");
     setTimeout(() => setNotification(""), 3000);
   };
 
@@ -393,11 +431,15 @@ export default function App() {
     try {
       const noteRef = doc(db, "test", id);
       await deleteDoc(noteRef);
+      setNotes(notes.filter((n) => n.id !== id));
       setNotification("Đã xóa ghi chú thành công!");
-      setTimeout(() => setNotification(""), 3000);
     } catch (error) {
       console.error("Error deleting note:", error);
+      setNotification("Lỗi khi xóa ghi chú!");
     }
+    setShowDeleteModal(false);
+    setNoteToDelete(null);
+    setTimeout(() => setNotification(""), 3000);
   };
 
   // Hàm xóa tất cả note
@@ -412,13 +454,13 @@ export default function App() {
         batch.delete(doc(db, "test", docSnapshot.id));
       });
       await batch.commit();
+      setNotes([]);
       setNotification("Đã xóa toàn bộ ghi chú!");
-      setTimeout(() => setNotification(""), 3000);
     } catch (error) {
       console.error("Error deleting all notes:", error);
-      setNotification("Lỗi khi xóa tất cả ghi chú! Chi tiết: " + error.message);
-      setTimeout(() => setNotification(""), 3000);
+      setNotification("Lỗi khi xóa tất cả ghi chú!");
     }
+    setTimeout(() => setNotification(""), 3000);
   };
 
   // Hàm sắp xếp A-Z
@@ -436,24 +478,18 @@ export default function App() {
         );
       const otherNotes = allNotes.filter((note) => note.type !== currentTab);
       const batch = writeBatch(db);
-      let updatedCount = 0;
-      for (const note of notesToSort) {
+      notesToSort.forEach((note) => {
         const noteRef = doc(db, "test", note.id);
-        const docSnap = await getDoc(noteRef);
-        if (docSnap.exists()) {
-          batch.update(noteRef, note);
-          updatedCount++;
-        }
-      }
-      if (updatedCount > 0) await batch.commit();
+        batch.update(noteRef, note);
+      });
+      await batch.commit();
       setNotes([...notesToSort, ...otherNotes]);
       setNotification(`✅ Đã sắp xếp "${currentTab}" theo thứ tự A-Z`);
-      setTimeout(() => setNotification(""), 3000);
     } catch (error) {
       console.error("Error sorting notes:", error);
-      setNotification("Lỗi khi sắp xếp ghi chú! Chi tiết: " + error.message);
-      setTimeout(() => setNotification(""), 3000);
+      setNotification("Lỗi khi sắp xếp ghi chú!");
     }
+    setTimeout(() => setNotification(""), 3000);
   };
 
   // Hàm import file
@@ -477,11 +513,10 @@ export default function App() {
               });
             });
             await batch.commit();
+            setNotes([...notes, ...importedNotes]);
             setNotification("Đã nhập dữ liệu từ file JSON thành công!");
-            setTimeout(() => setNotification(""), 3000);
           } catch (error) {
             setNotification("Lỗi: File JSON không hợp lệ.");
-            setTimeout(() => setNotification(""), 3000);
           }
         };
         reader.readAsText(file);
@@ -489,18 +524,13 @@ export default function App() {
         reader.onload = async (event) => {
           const lines = event.target.result.split("\n").filter(Boolean);
           const importedNotes = lines.map((line) => {
-            const [wordOrStructure, meaningOrExplanation, type, topic, tags] = line
+            const [wordOrStructure, meaningOrExplanation, type] = line
               .split("|")
               .map((s) => s.trim());
             return {
               [type === "ngữ pháp" ? "structure" : "word"]: wordOrStructure,
               [type === "ngữ pháp" ? "explanation" : "meaning"]: meaningOrExplanation,
               type: type || currentTab,
-              [type === "ngữ pháp" ? "topic" : ""]: topic || "",
-              [type === "ngữ pháp" ? "hashtags" : ""]: tags
-                ? tags.split(",").map((t) => t.trim())
-                : [],
-              exampleOrExplanation: type !== "ngữ pháp" ? "" : undefined,
               addedDate: new Date().toISOString(),
             };
           });
@@ -511,30 +541,25 @@ export default function App() {
             batch.set(newDocRef, note);
           });
           await batch.commit();
+          setNotes([...notes, ...importedNotes]);
           setNotification(`Đã nhập ${importedNotes.length} ghi chú thành công!`);
-          setTimeout(() => setNotification(""), 3000);
         };
         reader.readAsText(file);
       } else {
         setNotification("Chỉ hỗ trợ file .txt hoặc .json");
-        setTimeout(() => setNotification(""), 3000);
       }
     } catch (error) {
       console.error("Error importing file:", error);
-      setNotification("Lỗi khi nhập file! Chi tiết: " + error.message);
-      setTimeout(() => setNotification(""), 3000);
+      setNotification("Lỗi khi nhập file!");
     }
+    setTimeout(() => setNotification(""), 3000);
   };
 
   // Hàm export file .txt
   const handleExportTXT = async () => {
     try {
       const content = notes
-        .map((note) =>
-          `${note.word || note.structure} | ${note.meaning || note.explanation} | ${
-            note.type
-          } | ${note.topic || ""} | ${note.hashtags?.join(", ") || ""}`
-        )
+        .map((note) => `${note.word || note.structure} | ${note.meaning || note.explanation} | ${note.type}`)
         .join("\n");
       const blob = new Blob([content], { type: "text/plain" });
       const url = URL.createObjectURL(blob);
@@ -544,12 +569,11 @@ export default function App() {
       link.click();
       URL.revokeObjectURL(url);
       setNotification("Đã xuất file .txt thành công!");
-      setTimeout(() => setNotification(""), 3000);
     } catch (error) {
       console.error("Error exporting TXT file:", error);
-      setNotification("Lỗi khi export file TXT! Chi tiết: " + error.message);
-      setTimeout(() => setNotification(""), 3000);
+      setNotification("Lỗi khi export file TXT!");
     }
+    setTimeout(() => setNotification(""), 3000);
   };
 
   // Hàm lọc theo hashtag
@@ -1036,8 +1060,6 @@ export default function App() {
                 <button
                   onClick={() => {
                     handleDeleteNote(noteToDelete.id);
-                    setShowDeleteModal(false);
-                    setNoteToDelete(null);
                   }}
                   className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded transition text-sm"
                 >
